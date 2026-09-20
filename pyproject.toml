@@ -1,0 +1,40 @@
+[project]
+name = "anitopy-ml"
+version = "0.1.0"
+description = "面向多语言媒体标题的语义解析工具"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = []
+tmdb = []
+train = [
+    "torch==2.14.0",
+    "transformers>=4.45",
+]
+review = []
+serve = []
+
+[project.scripts]
+anitopy-ml = "anitopy_ml.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.unittest]
+start-directory = "tests"

@@ -1,0 +1,765 @@
+{
+  "title": [
+    {
+      "title": "魔法姊妹露露莉莉",
+      "title_alias": ["Mahou no Shimai Rurutto Riryi"],
+      "title_en":"Mahou no Shimai Rurutto Riryi",
+      "season_expr": []
+    },
+    {
+      "title": "29岁单身中坚冒险家的日常",
+      "title_alias": ["29-sai Dokushin Chuuken Boukensha no Nichijou"],
+      "title_en":"29-sai Dokushin Chuuken Boukensha no Nichijou",
+      "season_expr": []
+    },
+    {
+      "title": "9-nine- 支配者的王冠",
+      "title_alias": ["9-nine- Ruler's Crown"],
+      "title_en":"9-nine- Ruler's Crown",
+      "season_expr": []
+    },
+    {
+      "title": "GHOST CONCERT: 失落之歌",
+      "title_alias": ["GHOST CONCERT: missing Songs"],
+      "title_en":"GHOST CONCERT: missing Songs",
+      "season_expr": []
+    },
+    {
+      "title": "Grow Up Show ～向日葵马戏团～",
+      "title_alias": [
+        "成长秀 向日葵马戏团",
+        "Grow Up Show - Himawari no Circus-dan"
+      ],
+      "title_en":"Grow Up Show - Himawari no Circus-dan",
+      "season_expr": []
+    },
+    {
+      "title": "Let's Play 充满挑战的人生",
+      "title_alias": ["Let's Play: Quest-darake no My Life"],
+      "title_en":"Let's Play: Quest-darake no My Life",
+      "season_expr": []
+    },
+    {
+      "title": "MAO摩绪",
+      "title_alias": [],
+      "title_en":"MAO",
+      "season_expr": []
+    },
+    {
+      "title": "Mizuzokusei no Mahoutsukai",
+      "title_alias": ["水属性的魔法师"],
+      "title_en":"Mizuzokusei no Mahoutsukai",
+      "season_expr": []
+    },
+    {
+      "title": "Nukitashi The Animation",
+      "title_alias": ["住在拔作岛上的贫乳该如何是好？"],
+      "title_en":"Nukitashi The Animation",
+      "season_expr": []
+    },
+    {
+      "title": "SANDA 变身圣诞老人",
+      "title_alias": [],
+      "title_en":"SANDA",
+      "season_expr": []
+    },
+    {
+      "title": "Yuusha Party ni Kawaii Ko ga Ita node, Kokuhaku shitemita.",
+      "title_alias": ["身为魔族的我想向勇者小队的可爱女孩告白。"],
+      "title_en":"Yuusha Party ni Kawaii Ko ga Ita node, Kokuhaku shitemita",
+      "season_expr": []
+    },
+    {
+      "title": "一根筋的风纪委员与裙长不当的JK",
+      "title_alias": [
+        "木头风纪委员和迷你裙JK的故事",
+        "ポンコツ风纪委员とスカート丈が不适切なJKの话",
+        "Ponsuka"
+      ],
+      "title_en":"Ponsuka",
+      "season_expr": []
+    },
+    {
+      "title": "不擅吸血的吸血鬼",
+      "title_alias": ["Chanto Suenai Kyuuketsuki-chan"],
+      "title_en":"Chanto Suenai Kyuuketsuki-chan",
+      "season_expr": []
+    },
+    {
+      "title": "不虐待我的继母与继姐",
+      "title_alias": ["Ibitte Konai Gibo to Gishi"],
+      "title_en":"Ibitte Konai Gibo to Gishi",
+      "season_expr": []
+    },
+    {
+      "title": "世界最强后卫～迷宫国的新人探索者～",
+      "title_alias": [
+        "Sekai Saikyou no Kouei: Meikyuukoku no Shinjin Tansakusha"
+      ],
+      "title_en":"Sekai Saikyou no Kouei Meikyuukoku no Shinjin Tansakusha",
+      "season_expr": []
+    },
+    {
+      "title": "为丑女献上花束。",
+      "title_alias": ["Busu ni Hanataba wo."],
+      "title_en":"Busu ni Hanataba wo",
+      "season_expr": []
+    },
+    {
+      "title": "乙女游戏世界对路人角色很不友好2",
+      "title_alias": ["Otome Game Sekai wa Mob ni Kibishii Sekai desu 2"],
+      "title_en":"Otome Game Sekai wa Mob ni Kibishii Sekai desu 2",
+      "season_expr": ["2"]
+    },
+    {
+      "title": "Clevatess II-魔兽之王与虚假的勇者传承-",
+      "title_alias": ["Clevatess S2"],
+      "title_en":"Clevatess S2",
+      "season_expr": ["II", "S2"]
+    },
+    {
+      "title": "乡下大叔成为剑圣II",
+      "title_alias": ["Katainaka no Ossan, Kensei ni Naru II"],
+      "title_en":"Katainaka no Ossan, Kensei ni Naru II",
+      "season_expr": ["II"]
+    },
+    {
+      "title": "乡下大叔成为剑圣III",
+      "title_alias": ["Katainaka no Ossan, Kensei ni Naru III"],
+      "title_en":"Katainaka no Ossan, Kensei ni Naru III",
+      "season_expr": ["III"]
+    },
+    {
+      "title": "乡下大叔成为剑圣IIII",
+      "title_alias": ["Katainaka no Ossan, Kensei ni Naru IIII"],
+      "title_en":"Katainaka no Ossan, Kensei ni Naru IIII",
+      "season_expr": ["IIII"]
+    },
+    {
+      "title": "从0位居民开始的边境领主大人",
+      "title_alias": ["Ryoumin 0-nin Start no Henkyou Ryoushu-sama"],
+      "title_en":"Ryoumin 0-nin Start no Henkyou Ryoushu-sama",
+      "season_expr": []
+    },
+    {
+      "title": "优雅贵族的休假指南。",
+      "title_alias": ["Odayaka Kizoku no Kyuuka no Susume."],
+      "title_en":"Odayaka Kizoku no Kyuuka no Susume",
+      "season_expr": []
+    },
+    {
+      "title": "保龄球少女！",
+      "title_alias": ["Turkey!"],
+      "title_en":"Turkey!",
+      "season_expr": []
+    },
+    {
+      "title": "光死去的夏天",
+      "title_alias": ["光逝去的夏天", "Hikaru ga Shinda Natsu"],
+      "title_en":"Hikaru ga Shinda Natsu",
+      "season_expr": []
+    },
+    {
+      "title": "公主大人 “拷问”的时间到了 第二季",
+      "title_alias": ["Himesama Goumon no Jikan desu S2"],
+      "title_en":"Himesama Goumon no Jikan desu S2",
+      "season_expr": ["第二季", "S2"]
+    },
+    {
+      "title": "公主大人 “拷问”的时间到了 第三季",
+      "title_alias": ["Himesama Goumon no Jikan desu S3"],
+      "title_en":"Himesama Goumon no Jikan desu S3",
+      "season_expr": ["第三季", "S3"]
+    },
+    {
+      "title": "公主大人 “拷问”的时间到了 第四季",
+      "title_alias": ["Himesama Goumon no Jikan desu S4"],
+      "title_en":"Himesama Goumon no Jikan desu S4",
+      "season_expr": ["第四季", "S4"]
+    },
+    {
+      "title": "勇者之渣",
+      "title_alias": ["Yuusha no Kuzu"],
+      "title_en":"Yuusha no Kuzu",
+      "season_expr": []
+    },
+    {
+      "title": "厄里斯的圣杯",
+      "title_alias": ["Eris no Seihai"],
+      "title_en":"Eris no Seihai",
+      "season_expr": []
+    },
+    {
+      "title": "古诺希亚",
+      "title_alias": ["GNOSIA"],
+      "title_en":"GNOSIA",
+      "season_expr": []
+    },
+    {
+      "title": "叹气的亡灵想隐退",
+      "title_alias": ["Nageki no Bourei wa Intai shitai"],
+      "title_en":"Nageki no Bourei wa Intai shitai",
+      "season_expr": []
+    },
+    {
+      "title": "吞噬魔物的冒险者",
+      "title_alias": ["Mamonogurai no Boukensha"],
+      "title_en":"Mamonogurai no Boukensha",
+      "season_expr": []
+    },
+    {
+      "title": "和班上第二可爱的女孩子成了朋友",
+      "title_alias": [
+        "我和班上第二可爱的女生成为朋友",
+        "クラスで２番目に可爱い女の子と友だちになった",
+        "Kuranika"
+      ],
+      "title_en":"Kuranika",
+      "season_expr": []
+    },
+    {
+      "title": "和青梅竹马之间不会有恋爱喜剧",
+      "title_alias": [
+        "青梅竹马的恋爱喜剧无法成立",
+        "幼驯染とはラブコメにならない",
+        "osalove"
+      ],
+      "title_en":"osalove",
+      "season_expr": []
+    },
+    {
+      "title": "在超市后门吸烟的二人",
+      "title_alias": [
+        "躲在超市后门抽烟的两人",
+        "Super no Ura de Yani Suu Futari"
+      ],
+      "title_en":"Super no Ura de Yani Suu Futari",
+      "season_expr": []
+    },
+    {
+      "title": "地狱模式～喜欢速通游戏的玩家在废设定异世界无双～",
+      "title_alias": ["Hell Mode"],
+      "title_en":"Hell Mode",
+      "season_expr": []
+    },
+    {
+      "title": "地狱模式～喜欢速通游戏的玩家在废设定异世界无双～ S2",
+      "title_alias": ["Hell Mode S2"],
+      "title_en":"Hell Mode S2",
+      "season_expr": ["S2"]
+    },
+    {
+      "title": "坂本日常",
+      "title_alias": ["SAKAMOTO DAYS"],
+      "title_en":"SAKAMOTO DAYS",
+      "season_expr": []
+    },
+    {
+      "title": "夜樱家的大作战 第二季",
+      "title_alias": ["Yozakura-san Chi no Daisakusen Season 2"],
+      "title_en":"Yozakura-san Chi no Daisakusen Season 2",
+      "season_expr": ["第二季", "Season 2"]
+    },
+    {
+      "title": "奇招百出的维多利亚",
+      "title_alias": ["Tefuda ga Oome no Victoria"],
+      "title_en":"Tefuda ga Oome no Victoria",
+      "season_expr": []
+    },
+    {
+      "title": "女主角？圣女？不，我是杂役女仆（自豪）！",
+      "title_alias": ["Heroine? Seijo? Iie, All Works Maid Desu (Hokori)!"],
+      "title_en":"Heroine? Seijo? Iie, All Works Maid desu (Ko)!",
+      "season_expr": []
+    },
+    {
+      "title": "女仆小姐的贪吃日常",
+      "title_alias": ["Maid-san wa Taberu dake"],
+      "title_en":"Maid-san wa Taberu dake",
+      "season_expr": []
+    },
+    {
+      "title": "女神“异世界转生想成为什么”我“勇者的肋骨”",
+      "title_alias": ["Yuusha no Rokkotsu de"],
+      "title_en":"Yuusha no Rokkotsu de",
+      "season_expr": []
+    },
+    {
+      "title": "女骑士成为蛮族新娘",
+      "title_alias": ["Himekishi wa Barbaroi no Yome"],
+      "title_en":"Himekishi wa Barbaroi no Yome",
+      "season_expr": []
+    },
+    {
+      "title": "妖怪旅馆营业中 贰",
+      "title_alias": ["Kakuriyo no Yadomeshi Ni"],
+      "title_en":"Kakuriyo no Yadomeshi Ni",
+      "season_expr": ["贰", "Ni"]
+    },
+    {
+      "title": "婚姻剧毒",
+      "title_alias": ["マリッジトキシン", "Marriagetoxin"],
+      "title_en":"Marriagetoxin",
+      "season_expr": []
+    },
+    {
+      "title": "婚戒物语II",
+      "title_alias": ["Kekkon Yubiwa Monogatari II"],
+      "title_en":"Kekkon Yubiwa Monogatari II",
+      "season_expr": ["II"]
+    },
+    {
+      "title": "安闲领主的愉快领地防卫",
+      "title_alias": ["Okiraku Ryoushu no Tanoshii Ryouchi Bouei"],
+      "title_en":"Okiraku Ryoushu no Tanoshii Ryouchi Bouei",
+      "season_expr": []
+    },
+    {
+      "title": "尼古喵喵 (邪竜解放版)",
+      "title_alias": ["ヤニねこ", "Yani Neko", "Chainsmoker Cat"],
+      "title_en":"Yani Neko",
+      "season_expr": []
+    },
+    {
+      "title": "小手指同学，请别乱摸",
+      "title_alias": ["Sawaranaide Kotesashi-kun"],
+      "title_en":"Sawaranaide Kotesashi-kun",
+      "season_expr": []
+    },
+    {
+      "title": "差点在迷宫深处被信任的伙伴杀掉，但靠着天赐技能“无限扭蛋”获得等级9999的伙伴",
+      "title_alias": ["Mugen Gacha"],
+      "title_en":"Mugen Gacha",
+      "season_expr": []
+    },
+    {
+      "title": "幼女战记II",
+      "title_alias": ["Youjo Senki II"],
+      "title_en":"Youjo Senki II",
+      "season_expr": ["II"]
+    },
+    {
+      "title": "异世界悠闲农家 2",
+      "title_alias": ["Isekai Nonbiri Nouka 2"],
+      "title_en":"Isekai Nonbiri Nouka 2",
+      "season_expr": ["2"]
+    },
+    {
+      "title": "彻夜之歌 第二季",
+      "title_alias": ["Yofukashi no Uta S2"],
+      "title_en":"Yofukashi no Uta S2",
+      "season_expr": ["第二季", "S2"]
+    },
+    {
+      "title": "怪兽8号",
+      "title_alias": ["Kaijuu 8-gou"],
+      "title_en":"Kaijuu 8-gou",
+      "season_expr": []
+    },
+    {
+      "title": "强者的新传说",
+      "title_alias": ["Tsuyokute New Saga"],
+      "title_en":"Tsuyokute New Saga",
+      "season_expr": []
+    },
+    {
+      "title": "恶食千金与狂血公爵",
+      "title_alias": ["Akujiki Reijou to Kyouketsu Koushaku"],
+      "title_en":"Akujiki Reijou to Kyouketsu Koushaku",
+      "season_expr": []
+    },
+    {
+      "title": "打工仔的拷问日常",
+      "title_alias": ["Goumon Baito-kun no Nichijou"],
+      "title_en":"Goumon Baito-kun no Nichijou",
+      "season_expr": []
+    },
+    {
+      "title": "攻壳机动队",
+      "title_alias": ["The Ghost in the Shell"],
+      "title_en":"The Ghost in the Shell",
+      "season_expr": []
+    },
+    {
+      "title": "数码宝贝BEATBREAK",
+      "title_alias": ["DIGIMON BEATBREAK"],
+      "title_en":"DIGIMON BEATBREAK",
+      "season_expr": []
+    },
+    {
+      "title": "无职英雄：技能什么的毫无用处",
+      "title_alias": ["Mushoku no Eiyuu"],
+      "title_en":"Mushoku no Eiyuu",
+      "season_expr": []
+    },
+    {
+      "title": "明明只是暗杀者，我的面板数值却比勇者还要强",
+      "title_alias": ["Sutetsuyo"],
+      "title_en":"Sutetsuyo",
+      "season_expr": []
+    },
+    {
+      "title": "暴走千金立誓复仇。 ～用魔导书之力碾碎祖国～",
+      "title_alias": [
+        "暴怒千金发誓复仇。 ～凭借魔导书之力打垮祖国～",
+        "ブチ切れ令嬢"
+      ],
+      "title_en":"Buchigire Reijou wa Houfuku wo Chikaimashita. Madousho no Chikara de Sokoku wo Tatakitsubushimasu",
+      "season_expr": []
+    },
+    {
+      "title": "最后可以再拜托您一件事吗？",
+      "title_alias": [
+        "Saigo ni Hitotsu dake Onegai Shitemo Yoroshii Deshou ka"
+      ],
+      "title_en":"Saigo ni Hitotsu dake Onegai Shitemo Yoroshii Deshou ka",
+      "season_expr": []
+    },
+    {
+      "title": "末世二轮之旅",
+      "title_alias": ["终末摩托游", "Shuumatsu Touring"],
+      "title_en":"Shuumatsu Touring",
+      "season_expr": []
+    },
+    {
+      "title": "机械女仆·玛丽",
+      "title_alias": ["人形机器人玛丽", "Kikaijikake no Marie"],
+      "title_en":"Kikaijikake no Marie",
+      "season_expr": []
+    },
+    {
+      "title": "柔光魔女股份有限公司 第二季",
+      "title_alias": ["Kabushikigaisha Magi-Lumière 2nd Season"],
+      "title_en":"Kabushikigaisha Magi-Lumière 2nd Season",
+      "season_expr": ["第二季", "2nd Season"]
+    },
+    {
+      "title": "永远的黄昏",
+      "title_alias": ["Towa no Yuugure"],
+      "title_en":"Towa no Yuugure",
+      "season_expr": []
+    },
+    {
+      "title": "淫狱团地(无修版)",
+      "title_alias": ["Ingoku Danchi"],
+      "title_en":"Ingoku Danchi",
+      "season_expr": []
+    },
+    {
+      "title": "淡岛百景",
+      "title_alias": ["Awajima Hyakkei"],
+      "title_en":"Awajima Hyakkei",
+      "season_expr": []
+    },
+    {
+      "title": "泛而不精的我被逐出了勇者队伍",
+      "title_alias": ["Yuusha Party wo Oidasareta Kiyoubinbou"],
+      "title_en":"Yuusha Party wo Oidasareta Kiyoubinbou",
+      "season_expr": []
+    },
+    {
+      "title": "灰原君的青春二周目",
+      "title_alias": [
+        "灰原同学重返过去，开启所向无敌的第二轮青春游戏",
+        "灰原くんの强くて青春ニューゲーム",
+        "Haibara-kun no Tsuyokute Seishun New Game"
+      ],
+      "title_en":"Haibara-kun no Tsuyokute Seishun New Game",
+      "season_expr": []
+    },
+    {
+      "title": "炎炎消防队 叁之章",
+      "title_alias": ["Enen no Shouboutai S3", "Fire Force Season 3"],
+      "title_en":"Enen no Shouboutai S3",
+      "season_expr": ["叁之章", "S3", "Season 3"]
+    },
+    {
+      "title": "盾之勇者成名录 Season 4",
+      "title_alias": ["Tate no Yuusha no Nariagari S4"],
+      "title_en":"Tate no Yuusha no Nariagari S4",
+      "season_expr": ["Season 4", "S4"]
+    },
+    {
+      "title": "碧蓝之海 第二季",
+      "title_alias": ["Grand Blue S2"],
+      "title_en":"Grand Blue S2",
+      "season_expr": ["第二季", "S2"]
+    },
+    {
+      "title": "终究，与你相恋。 第2季",
+      "title_alias": [
+        "どうせ、恋してしまうんだ。 第2期",
+        "Douse, Koishite Shimaunda. 2nd Season"
+      ],
+      "title_en":"Douse, Koishite Shimaunda. 2nd Season",
+      "season_expr": ["第2季", "第2期", "2nd Season"]
+    },
+    {
+      "title": "致不灭的你 第三季 / Fumetsu no Anata e S3",
+      "title_alias": ["Fumetsu no Anata e S3"],
+      "title_en":"Fumetsu no Anata e S3",
+      "season_expr": ["第三季", "S3"]
+    },
+    {
+      "title": "蓝色管弦乐 第二季",
+      "title_alias": ["Blue Orchestra S2", "Ao no Orchestra S2"],
+      "title_en":"Blue Orchestra S2",
+      "season_expr": ["第二季", "S2"]
+    },
+    {
+      "title": "超超超超超喜欢你的100个女朋友",
+      "title_alias": ["Hyakkano"],
+      "title_en":"Hyakkano",
+      "season_expr": []
+    },
+    {
+      "title": "86 -不存在的战区-",
+      "title_alias": ["EIGHTY SIX", "86 – EIGHTY-SIX"],
+      "title_en":"86 – EIGHTY-SIX",
+      "season_expr": []
+    },
+    {
+      "title": "命运/冠位指定 绝对魔兽战线巴比伦尼亚",
+      "title_alias": ["FGO Absolute Demonic Front Babylonia"],
+      "title_en":"FGO Absolute Demonic Front Babylonia",
+      "season_expr": []
+    },
+    {
+      "title": "Fate/Grand Order -绝对魔兽战线巴比伦尼亚-",
+      "title_alias": ["Fate/Grand Order -絶対魔獣戦线バビロニア-"],
+      "title_en":"Fate/Grand Order Zettai Majuu Sensen Babylonia",
+      "season_expr": []
+    },
+    {
+      "title": "22/7",
+      "title_alias": ["Nanabun no Nijuuni"],
+      "title_en":"Nanabun no Nijuuni",
+      "season_expr": []
+    },
+    {
+      "title": "16bit的感动 ANOTHER LAYER",
+      "title_alias": ["16位的辉煌 Another Layer", "16bit Sensation: Watashi to Minna ga Tsukutta Bishoujo Game"],
+      "title_en":"16bit Sensation: Watashi to Minna ga Tsukutta Bishoujo Game",
+      "season_expr": []
+    },
+    {
+      "title": "4个人各自有着自己的秘密",
+      "title_alias": [
+        "4人はそれぞれウソをつく",
+        "4-nin wa Sorezore Uso wo Tsuku"
+      ],
+      "title_en":"4-nin wa Sorezore Uso wo Tsuku",
+      "season_expr": []
+    },
+    {
+      "title": "【我推的孩子】",
+      "title_alias": [
+        "Oshi no Ko"
+      ],
+      "title_en":"Oshi no Ko",
+      "season_expr": []
+    },
+    {
+      "title": "『你们先走我断后』，于是10年后我成为了传说",
+      "title_alias": [
+        "“你们先走我断后”，于是十年后我成为了传说",
+        "Koko wa Ore ni Makasete Saki ni Ike to Itte kara 10-nen ga Tattara Densetsu ni Natteita."
+      ],
+      "title_en":"Koko wa Ore ni Makasete Saki ni Ike to Itte kara 10-nen ga Tattara Densetsu ni Natteita",
+      "season_expr": []
+    },
+    {
+      "title": "骸骨骑士大人异世界冒险中 第二季",
+      "title_alias": [
+        "Gaikotsu Kishi-sama, Tadaima Isekai e Odekakechuu II"
+      ],
+      "title_en":"Gaikotsu Kishi-sama, Tadaima Isekai e Odekakechuu II",
+      "season_expr": [
+        "第二季",
+        "II"
+      ]
+    },
+    {
+      "title": "文豪野犬 汪！第二季",
+      "title_alias": [
+        "Bungou Stray Dogs Wan! 2"
+      ],
+      "title_en":"Bungou Stray Dogs Wan! 2",
+      "season_expr": [
+        "第二季",
+        "2"
+      ]
+    }
+  ],
+  "episode_expr": [
+    "%random(2)"
+  ],
+  "episode_count_expr": [
+    "01-%random(2) 合集",
+    "01-%random(2) END",
+    "01-%random(2) 精校合集",
+    "01-%random(2) Fin",
+    "01-%random(2)"
+  ],
+  "release_group": [
+    "AI-Raws",
+    "澄空学园",
+    "Sakurato",
+    "VCB-Studio",
+    "DMG",
+    "LoliHouse",
+    "Nekomoe kissaten",
+    "XKsub",
+    "LPSub",
+    "orion origin",
+    "织梦字幕组",
+    "ANi",
+    "KitaujiSub",
+    "Snow-Raws",
+    "Billion Meta Lab",
+    "芝士动物朋友",
+    "Airota&VCB-Studio",
+    "Airota",
+    "Nekomoe kissaten&VCB-Studio",
+    "Nekomoe kissaten&LoliHouse",
+    "BeanSub&FZSD&LoliHouse",
+    "DMG&LoliHouse",
+    "KitaujiSub&LoliHouse",
+    "霜庭云花Sub",
+    "DMG&VCB-Studio",
+    "UHA-WINGS&VCB-Studio",
+    "ReinForce",
+    "沸羊羊制作",
+    "FYY GROUP",
+    "Clarita",
+    "北宇治字幕组",
+    "CASO",
+    "SumiSora",
+    "Airota&SumiSora",
+    "CASO&SumiSora",
+    "MMSUB",
+    "小满云电工作室",
+    "Morehouse-Studio",
+    "小满云电工作室&Morehouse-Studio",
+    "CASO&LoliHouse",
+    "SumiSora&LoliHouse",
+    "XKsub&LoliHouse",
+    "7³ACG"
+  ],
+  "source": ["BDRip", "BD", "WEBDL", "WebRip", "WEB-DL", "DVDRip"],
+  "resolution": ["1080p", "2160p", "4K", "720p", "1920x1080"],
+  "video_term": ["H265", "H264", "AV1", "AVC", "HEVC"],
+  "audio_term": ["AAC", "FLAC", "OPUS 2.0"],
+  "subtitle_language_chs": ["简体", "繁体", "简繁", "简日", "繁日", "简繁日"],
+  "subtitle_language_en": ["CHS", "CHT", "JP", "CHS&JP", "CHT&JP", "CHS&CHT&JP", "GB", "BIG5", "GB&JP", "BIG5&JP"],
+  "subtitle_mode": ["内封", "内嵌", "外挂"],
+  "file_extension": ["mp4", "mkv"],
+  "bit_depth": ["8bit", "10bit"],
+  "name_template":[
+    {
+        "name":
+        [
+            "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]",
+            "[$release_group] $title [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en].$file_extension"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":" "
+    },
+    {
+        "name":
+        [
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":" "
+    },
+    {
+        "name":
+        [
+            "[$release_group] $title$title_alias - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_count_expr] [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title$title_alias E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "[$release_group] $title$title_alias - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":" / "
+    },
+    {
+        "name":
+        [
+            "$release_group★$title@$title_alias@★$episode_count_expr★$video_term &audio_term $file_extension★&subtitle_language_chs&subtitle_mode"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":" "
+    },
+    {
+        "name":
+        [
+            "[$release_group] $title$title_alias | $episode_count_expr+SPx1 [&subtitle_language_chs&subtitle_mode] $source $resolution $video_term &audio_term",
+            "[$release_group] $title$title_alias | $episode_count_expr [&subtitle_language_chs&subtitle_mode] $source $resolution $video_term &audio_term"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":" / "
+    },
+    {
+        "name":
+        [
+            "[$release_group][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode][$noise]",
+            "[$release_group][$noise][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":"/",
+        "noise":[
+          "1月新番",
+          "4月新番",
+          "7月新番",
+          "10月新番"
+        ]
+    },
+    {
+        "name":
+        [
+            "[$release_group][$title]$title_alias[$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group][$noise][$title]$title_alias[$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]"
+        ],
+        "title_alias_open":"[",
+        "title_alias_close":"]",
+        "title_alias_separator":"",
+        "noise":[
+          "1月新番",
+          "4月新番",
+          "7月新番",
+          "10月新番"
+        ]
+    },
+    {
+        "name":
+        [
+            "[$release_group] $title_en - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title_en - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title_en E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "[$release_group] $title_en - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "[$release_group] $title_en $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "[$release_group] $title_en - $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
+        ],
+        "exclude_title_season_expr": true,
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":"",
+        "season_expr":[
+          "S0%random_range(1-6)"
+        ]
+    }
+  ]
+}

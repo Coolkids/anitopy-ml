@@ -1,0 +1,22 @@
+# Python 解释器与缓存
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 本地数据、缓存和训练产物
+data/
+artifacts/
+reports/
+
+# 凭证与本地配置
+.env
+.env.*
+!*.example.env
+configs/authorization.yaml
+
+# 编辑器
+.idea/
+.vscode/

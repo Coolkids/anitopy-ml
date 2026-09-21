@@ -31,3 +31,27 @@ class InferenceDecodingTests(unittest.TestCase):
         )
         self.assertEqual(result.evidence["title"].confidence, 0.75)
         self.assertTrue(result.evidence["title"].calibrated)
+
+    def test_model_spans_fill_release_group_and_numeric_season_episode_fields(self) -> None:
+        raw_text = "【字幕组】★示例作品★第二季★07★12(完)★1920x1080"
+        labels = ["O"] * len(raw_text)
+
+        def mark(text: str, label: str) -> None:
+            start = raw_text.index(text)
+            labels[start] = f"B-{label}"
+            for index in range(start + 1, start + len(text)):
+                labels[index] = f"I-{label}"
+
+        mark("【字幕组】", "RELEASE_GROUP")
+        mark("第二季", "SEASON_EXPR")
+        mark("07", "EPISODE_EXPR")
+        mark("12(完)", "EPISODE_COUNT_EXPR")
+        mark("1920x1080", "RESOLUTION")
+
+        result = build_parse_result(raw_text, labels, confidences=[0.9] * len(labels))
+
+        self.assertEqual(result.extracted.release_groups, ["字幕组"])
+        self.assertEqual(result.extracted.seasons, [2])
+        self.assertEqual(result.extracted.episodes, [{"raw": "07", "value": "7", "numbering": "unknown"}])
+        self.assertEqual(result.extracted.declared_episode_count, 12)
+        self.assertEqual(result.extracted.resolution, ["1920x1080"])

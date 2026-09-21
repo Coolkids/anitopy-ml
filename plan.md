@@ -2,14 +2,16 @@
 
 ## 当前实施变更（2026-09-20）
 
+- [x] 合成器支持 `title_alias_begin`、局部 `noise2` 和 `%random_str($字符串来源, 最大连续字符数)`；标题与别名无明确边界、多个别名无分隔符的模板会被拒绝。
 - [x] 合成器支持 `$title_en`（英文主标题，`TITLE`）、`$title_cn`（中文名称，`TITLE_ALIAS`）和带数字的 `$title_as_title_alias_1` 占位符。
 - [x] 英文主标题优先作为作品双隔离分区键；旧标题字段仍可读取，保证旧模板可用。
 - [x] 已通过合成数据单元测试（12 项）。
 - [x] 已保存使用 `$title_en` 的模板，并生成 V6 原始数据、去重数据和作品/模板组双隔离分区。
 - [x] 合成器支持模板组局部 `$noise` 字段并标注为 `NOISE`，用于下一数据版本抑制月份新番文本被误识别为标题。
 - [x] V6 已完成训练、校准和冻结评测；冻结测试已消费且未通过发布。
-- [x] V7 噪声字段数据已生成、审计并双隔离划分；训练集含 7,457 个 `NOISE` 片段。
-- [ ] 训练 V7 候选并只使用 V7 验证集选择候选与校准；V7 冻结测试尚未读取。
+- [x] V8 噪声字段数据和冻结评测已归档；冻结测试已消费且未通过发布。
+- [x] V9 已生成 179,993 条唯一合成样本，覆盖 28 个模板和 9 个模板组；双隔离导出训练 109,155、验证 2,792、冻结测试 1,775 条。
+- [x] V9 三随机种子训练、校准和冻结评测已完成；冻结实体 F1 为 0.8583、整条严格完全正确率为 19.32%，未通过发布且冻结测试已消费。
 
 依据：[task.md](task.md)。计划日期：2026-09-17。
 
@@ -166,7 +168,7 @@ M2的工程完成指模板生成器、自动 BIO 标注、生成清单和按作�
 
 **前置条件：** 步骤02—05。**需求对应：** 第4.3、5.2、8节。
 
-主要文件：`src/anitopy_ml/annotation/store.py`、`seed.py`、`review.py`、`tools/review_app.py`、`docs/标注规范.md`、相关集成测试。
+主要文件：`src/anitopy_ml/annotation/store.py`、`seed.py`、`review.py`、`tools/model_verify_app.py`、`docs/模型验证页面.md`、相关集成测试。
 
 - [x] 建立SQLite样本、片段、结构字段、来源、审核状态、审核历史和版本表，并提供迁移机制。
 - [x] 实现 `annotate seed`，将旧规则结果转换为可编辑建议；未确认区域保留未标注状态。
@@ -290,7 +292,7 @@ M2的工程完成指模板生成器、自动 BIO 标注、生成清单和按作�
 主要文件与产物：`src/anitopy_ml/training/evaluate.py`、回归/集成测试、当前版本的评测报告与 `reports/历史训练与评测汇总.md`。
 
 - [ ] 对旧规则、语义模式和混合模式在同一冻结测试集评测。已完成语义候选的独立测试；旧规则与混合模式对照尚未实现，且当前语义指标已不满足发布条件。
-- [ ] 输出实体F1、关键字段准确率、整条完全正确率及按作品组估计的95%置信区间。已输出严格实体F1为0.8552、字段与整条指标；当前合成测试只有79个标题条目和7个模板组，分区后测试样本有限，未给出会造成误导的作品组95%区间。
+- [ ] 输出严格实体F1、名称与别名联合、季数、集数、核心字段整条完全正确率及按作品组估计的95%置信区间。严格实体F1和全部字段统计只用于诊断；发布仅以四项核心指标判定。当前合成测试只有79个标题条目和7个模板组，分区后测试样本有限，未给出会造成误导的作品组95%区间。
 - [ ] 分别报告混合语言、数字标题、合集、特别篇、未知作品和媒体类型效果及样本量。
 - [ ] 测试CPU冷启动、热启动P50/P95、批量吞吐和内存，固定硬件、线程和长度条件；网络关联单列。
 - [ ] 验证缺模型、离线、缓存损坏和超长输入路径。
@@ -298,10 +300,11 @@ M2的工程完成指模板生成器、自动 BIO 标注、生成清单和按作�
 
 | 验收项 | 沿用 `task.md` 的目标 | 记录要求 |
 | --- | --- | --- |
-| 相对旧规则提升 | 整条关键字段完全正确率提升≥10个百分点；旧基线>90%时可用错误率下降≥30%替代 | 同一测试集、同一适用字段及配对比较 |
-| 主标题 | 规范化准确率≥95% | 同时报样本量和覆盖范围 |
-| 季集 | 适用样本完全正确率≥97% | 范围、集合、数量声明分别报告 |
-| 分辨率和明确编码 | 准确率≥98% | 不把实际文件属性与标题声明混淆 |
+| 名称与别名联合 | 完全正确率≥95% | 标签类型可互换，允许合并为连续名称实体，但整体起止边界必须正确 |
+| 季数 | 适用样本完全正确率≥97% | 仅在存在季数表达的样本中统计 |
+| 集数 | 适用样本完全正确率≥97% | 集数表达、范围和声明总集数合并核对 |
+| 核心字段整条 | 完全正确率≥95% | 仅比较名称与别名联合、季数和集数 |
+| 发布组及技术字段 | 观察指标 | 必须逐字段报告，但不作为发布阻断条件 |
 | 兼容性 | 197条冻结旧输出一致 | 历史正确预期匹配率另列 |
 | 离线推理性能 | 指定CPU、批量1、≤256词元时热启动P95暂定≤300毫秒 | 硬件确定后据实验证，不提前承诺 |
 
@@ -373,7 +376,7 @@ uv run anitopy-ml calibrate --model artifacts/runs/抽取实验一/best --data d
 
 ```powershell
 # 配置固定后进行独立评测，达到对应发布条件后导出
-uv run anitopy-ml evaluate --model artifacts/runs/扩容V6英文主标题种子1 --test data/synthetic/扩容V6英文主标题双隔离分区/test.jsonl --output reports/模型评测/扩容V6英文主标题冻结测试.json --device cuda
+uv run anitopy-ml evaluate --model artifacts/runs/V9_alias_boundary_noise_seed2 --test data/synthetic/V9_alias_boundary_noise_split/test.jsonl --output reports/模型评测/V9_alias_boundary_noise_frozen_test.json --device cuda
 uv run anitopy-ml export --model artifacts/runs/抽取实验一/best --output artifacts/releases/媒体解析模型-v1
 
 # 验证离线单条与批量调用
@@ -393,17 +396,17 @@ uv run anitopy-ml batch --input data.csv --column record_title --model artifacts
 | 03 | 旧实现与基线 | 已完成 | `src/anitopy_ml/legacy.py`、`docs/第三方组件.md`、`reports/旧解析器基线.json`；197条夹具比对与`baseline`命令已验证 |
 | 04 | 导入与统计工具 | 已完成 | `data/raw/titles.jsonl`、`data/raw/titles.manifest.json`、`reports/数据概况.json`、`reports/旧解析结果.jsonl`；当前数据集导入28,780条、无精确重复，批量旧解析28,780条且无异常 |
 | 05 | 清洗与规范化 | 已完成 | `src/anitopy_ml/normalizer.py`、`constraints.py`；全角/空白、噪声、季集、技术字段、特别篇和长标题窗口均已验证 |
-| 06 | 标注与审核工具 | 已完成 | `annotation/store.py`、`annotation/seed.py`、`annotation/review.py`、`tools/review_app.py`、`docs/标注规范.md`；SQLite、100条弱标注、最新版本复核队列、原文拖选、Unicode偏移换算、无法判断、版本冲突保护、本地作品组覆盖和本地模型建议草稿载入均已验证。模型建议不会自动保存或授予训练许可 |
+| 06 | 模型实际验证页面 | 已完成 | 人工标注网页已移除；`tools/model_verify_app.py` 仅在本机接收标题并展示解析结果，不写入SQLite。页面优先展示主标题、作品别名、季数与集数；标题与别名相连时可按整体边界核对，发布组和技术字段仅作辅助参考。 |
 | 07 | 模板分组与数据划分 | 已完成 | `data/synthetic.py`、`data split-synthetic`、`data/synthetic/扩容V6英文主标题双隔离分区/training_manifest.json`；V6 按 90 个英文主标题和 8 个模板组双隔离，导出训练 83,808、验证 1,426、冻结测试 2,196 条。 |
-| 08 | 模板覆盖与自动标注 | 已完成 | `data.json`、`data/synthetic/模板训练数据-扩容V6英文主标题去重.jsonl`、`reports/扩容V6英文主标题数据报告.md`；149,977 条唯一合成样本覆盖 23 条模板，BIO 审计 0 异常。 |
-| 08A | 噪声字段数据版本 | 已完成 | `data/synthetic/V7_noise_deduplicated.jsonl`、`data/synthetic/V7_noise_split/training_manifest.json`、`reports/扩容V7噪声字段数据报告.md`；149,986 条唯一合成样本覆盖 23 条模板，`NOISE` 片段 9,468 个，BIO 审计 0 异常。 |
-| 12 | 模板训练数据、隔离划分与标签对齐 | 进行中 | `data/synthetic.py`、`data generate-synthetic`、`data split-synthetic`、`data/synthetic/首批双隔离分区/training_manifest.json`、`docs/合成训练数据.md`；模板生成、别名循环、中文/英文字幕标签、BIO 对齐和标题/模板组双隔离均已验证，跨批去重与正式分词器训练接入待实现 |
-| 13 | 模型与训练器 | 已完成 | `modeling/model.py`、`training/extractor.py`、`training/trainer.py`、`training/checkpoint.py`、`reports/扩容V6英文主标题固定种子稳定性报告.md`；V6 三种子 CUDA 训练完成，验证实体 F1 均值为 0.9304，无对齐问题。 |
-| 14 | 推理及兼容接口 | 进行中 | `api.py`、`cli.py`、`inference/character.py`、`inference/decoding.py`、`docs/调用指南.md`、`tests/unit/test_api.py`；本地字符连通性检查点可离线加载，单条解析、BIO原文证据回填、批量错误隔离和`parse`/`batch`命令已通过联调。V6 种子2已固定为校准候选，待校准后接入候选。滑窗合并和旧接口适配待实现 |
-| 15 | 正式训练与对照实验 | 进行中 | V6 实验已归档且未通过发布。V7 噪声字段分区与 `configs/V7_noise_training.json` 已就绪；待运行种子1并仅查看 V7 验证分区。 |
-| 16 | 校准与接受策略 | 进行中 | V6 校准策略已固定且不迁移到 V7；待对 V7 候选仅使用 V7 验证分区重新校准。 |
-| 17 | 独立评测与发布判定 | 进行中 | V6 冻结测试已消费并不通过。V7 冻结测试尚未读取；注意它不含 `NOISE` 样本，不能独立评测该字段。 |
-| 18 | 打包、文档与发布演练 | 等待外部条件 | 待 V7 或后续版本训练出候选、完成校准并在未读取冻结测试中达到发布条件。 |
+| 08 | 模板覆盖与自动标注 | 已完成 | V6 已归档：149,977 条唯一合成样本覆盖 23 条模板，BIO 审计 0 异常；详细产物待清理，结论见 `reports/历史训练与评测汇总.md`。 |
+| 08A | 噪声字段数据版本 | 已完成 | V8 已归档：149,993 条唯一合成样本覆盖 25 条模板，`NOISE` 片段 21,718 个，BIO 审计 0 异常；详细产物待清理，结论见 `reports/历史训练与评测汇总.md`。 |
+| 12 | 模板训练数据、隔离划分与标签对齐 | 已完成 | `data/synthetic.py`、`data generate-synthetic`、`data split-synthetic`、`data/synthetic/V9_alias_boundary_noise_split/training_manifest.json`、`reports/V9_alias_boundary_noise_coverage.json`；V9 生成 179,993 条唯一样本，覆盖 28 个模板和 9 个模板组，BIO 审计 0 异常，训练/验证/冻结测试均完成双隔离。 |
+| 13 | 模型与训练器 | 已完成 | `modeling/model.py`、`training/extractor.py`、`training/trainer.py`、`training/checkpoint.py`、`reports/V9标题别名边界与噪声字段固定种子稳定性报告.md`；V9 三种子 CUDA 训练完成，验证实体 F1 均值为 0.9731，无对齐问题。 |
+| 14 | 推理及兼容接口 | 进行中 | `api.py`、`cli.py`、`inference/character.py`、`inference/decoding.py`、`docs/调用指南.md`、`tests/unit/test_api.py`；本地字符连通性检查点可离线加载，单条解析、BIO原文证据回填、批量错误隔离和`parse`/`batch`命令已通过联调。V9 冻结评测未通过发布；滑窗合并和旧接口适配待实现。 |
+| 15 | 正式训练与对照实验 | 已完成 | V6、V8 与 V9 均未通过发布。V9 三种子复测完成，种子2验证实体 F1 为 0.9792；冻结测试已消费且不通过发布。 |
+| 16 | 校准与接受策略 | 已完成 | V8 校准结论已归档。V9 种子2已仅使用 V9 验证集完成校准和接受策略，7 个字段自动接收，覆盖率 76.69%、经验错误率 0.32%，`title` 与 `title_alias` 固定复核。详见 `reports/V9标题别名边界与噪声字段校准报告.md`。 |
+| 17 | 独立评测与发布判定 | 已完成 | 发布标准已调整为名称与别名联合≥95%、季数≥97%、集数≥97%、核心字段整条≥95%；发布组和技术字段只作观测。V9 冻结测试已消费，且季数 95.74%、集数表达 91.04% 均未达到新核心门槛，因此仍不发布。详见 `reports/发布判定.md`。 |
+| 18 | 打包、文档与发布演练 | 等待外部条件 | V9 不发布。待用户补充真实模板后建立新的数据版本、双隔离分区、候选训练、校准和一次未读取的冻结评测。 |
 
 状态统一使用“未开始、进行中、等待外部条件、待验收、已完成”。当前训练不再因人工金标数量等待；GPU 条件只影响正式模型训练速度。
 

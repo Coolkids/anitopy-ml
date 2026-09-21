@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Callable, Sequence
 
-from anitopy_ml.constraints import extract_constraints
+from anitopy_ml.constraints import enrich_fields_from_model_spans, extract_constraints
 from anitopy_ml.errors import SchemaValidationError
 from anitopy_ml.schemas import BIO_LABELS, Evidence, ParseResult, Span
 
@@ -84,6 +84,7 @@ def build_parse_result(
     grouped: dict[str, list[Span]] = defaultdict(list)
     for span in spans:
         grouped[span.label].append(span)
+    enrich_fields_from_model_spans(fields, spans)
 
     titles = grouped.get("TITLE", [])
     aliases = grouped.get("TITLE_ALIAS", [])

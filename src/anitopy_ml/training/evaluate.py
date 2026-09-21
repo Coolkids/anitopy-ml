@@ -19,6 +19,10 @@ class ParserProtocol(Protocol):
     def parse(self, title: str) -> ParseResult: ...
 
 
+_NAME_LABELS = frozenset({"TITLE", "TITLE_ALIAS"})
+_EPISODE_LABELS = frozenset({"EPISODE_EXPR", "EPISODE_COUNT_EXPR"})
+
+
 def _read_records(path: str | Path) -> list[dict[str, Any]]:
     """读取冻结测试分区，并拒绝空文件或无效JSON。"""
     target = Path(path)
@@ -36,11 +40,42 @@ def _span_keys(spans: Sequence[Span]) -> set[tuple[str, int, int]]:
     return {(span.label, span.start, span.end) for span in spans}
 
 
+def _combined_extent(
+    keys: set[tuple[str, int, int]], labels: frozenset[str]
+) -> tuple[int, int] | None:
+    """取得一组核心字段的整体边界，允许名称与别名合并为一个实体。"""
+    ranges = [(start, end) for label, start, end in keys if label in labels]
+    if not ranges:
+        return None
+    return min(start for start, _ in ranges), max(end for _, end in ranges)
+
+
+def _core_checks(
+    expected: set[tuple[str, int, int]], predicted: set[tuple[str, int, int]]
+) -> dict[str, bool | None]:
+    """计算发布核心字段的样本级正确性，忽略非核心字段差异。"""
+    expected_name = _combined_extent(expected, _NAME_LABELS)
+    predicted_name = _combined_extent(predicted, _NAME_LABELS)
+    expected_season = {key for key in expected if key[0] == "SEASON_EXPR"}
+    predicted_season = {key for key in predicted if key[0] == "SEASON_EXPR"}
+    expected_episode = _combined_extent(expected, _EPISODE_LABELS)
+    predicted_episode = _combined_extent(predicted, _EPISODE_LABELS)
+    return {
+        "名称与别名联合": expected_name == predicted_name if expected_name is not None else None,
+        "季数": expected_season == predicted_season if expected_season else None,
+        "集数": expected_episode == predicted_episode if expected_episode is not None else None,
+    }
+
+
 def evaluate_records(records: Sequence[dict[str, Any]], parser: ParserProtocol) -> dict[str, object]:
     """聚合实体、字段和整条标题的严格边界指标。"""
     total_predicted = total_expected = total_correct = 0
     per_field: dict[str, dict[str, int]] = defaultdict(lambda: {"适用样本数": 0, "完全正确数": 0, "预测实体数": 0, "真实实体数": 0, "正确实体数": 0})
     full_correct = 0
+    core_stats: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"适用样本数": 0, "完全正确数": 0}
+    )
+    core_full_applicable = core_full_correct = 0
     policy = {"自动接收": 0, "需要复核": 0, "未校准": 0}
     errors: list[dict[str, object]] = []
     for record in records:
@@ -62,6 +97,16 @@ def evaluate_records(records: Sequence[dict[str, Any]], parser: ParserProtocol) 
         total_correct += len(correct_keys)
         if predicted_keys == expected_keys:
             full_correct += 1
+        checks = _core_checks(expected_keys, predicted_keys)
+        applicable_checks = [
+            (name, correct) for name, correct in checks.items() if correct is not None
+        ]
+        for name, correct in applicable_checks:
+            core_stats[name]["适用样本数"] += 1
+            core_stats[name]["完全正确数"] += int(correct)
+        if applicable_checks:
+            core_full_applicable += 1
+            core_full_correct += int(all(correct for _, correct in applicable_checks))
         labels_in_sample = {label for label, _, _ in expected_keys | predicted_keys}
         for label in labels_in_sample:
             expected_field = {key for key in expected_keys if key[0] == label}
@@ -108,6 +153,15 @@ def evaluate_records(records: Sequence[dict[str, Any]], parser: ParserProtocol) 
         }
         for label, stats in sorted(per_field.items())
     }
+    core_report = {
+        name: {
+            **stats,
+            "完全正确率": stats["完全正确数"] / stats["适用样本数"]
+            if stats["适用样本数"]
+            else 0.0,
+        }
+        for name, stats in sorted(core_stats.items())
+    }
     return {
         "说明": "这是未参与训练、候选选择或校准的模板分布内冻结测试；不代表真实发布标题准确率。",
         "测试样本数": len(records),
@@ -121,6 +175,9 @@ def evaluate_records(records: Sequence[dict[str, Any]], parser: ParserProtocol) 
         },
         "整条严格完全正确数": full_correct,
         "整条严格完全正确率": full_correct / len(records),
+        "核心字段指标": core_report,
+        "核心字段整条完全正确数": core_full_correct,
+        "核心字段整条完全正确率": core_full_correct / core_full_applicable if core_full_applicable else 0.0,
         "字段指标": field_report,
         "接受策略统计": policy,
         "误差样本": errors,

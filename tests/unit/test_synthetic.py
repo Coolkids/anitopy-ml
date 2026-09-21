@@ -4,6 +4,7 @@ import unittest
 import re
 
 from anitopy_ml.data.synthetic import audit_synthetic_records, deduplicate_synthetic_records, generate_synthetic_records, split_synthetic_records
+from anitopy_ml.errors import SchemaValidationError
 
 
 def template_payload() -> dict[str, object]:
@@ -38,7 +39,7 @@ class SyntheticDataTests(unittest.TestCase):
 
     def test_alias_wrappers_and_subtitle_labels_are_generated(self) -> None:
         record = generate_synthetic_records(template_payload(), count=1, seed=1)[0]
-        self.assertEqual(record["text"], "[字幕组] 示例作品 第二季（Demo / 演示） [EP01][简繁内封].mkv")
+        self.assertEqual(record["text"], "[字幕组] 示例作品 第二季（Demo） / （演示） [EP01][简繁内封].mkv")
         spans = record["spans"]
         self.assertTrue(any(item["label"] == "TITLE_ALIAS" and item["text"] == "Demo" for item in spans))
         self.assertTrue(any(item["label"] == "SEASON_EXPR" and item["text"] == "第二季" for item in spans))
@@ -116,6 +117,60 @@ class SyntheticDataTests(unittest.TestCase):
         self.assertFalse(any(item["label"] == "TITLE" for item in record["spans"]))
         self.assertTrue(any(item["label"] == "TITLE_ALIAS" for item in record["spans"]))
 
+    def test_adjacent_title_and_alias_without_boundary_is_rejected(self) -> None:
+        payload = template_payload()
+        payload["name_template"] = [
+            {
+                "name": ["$title$title_alias [$episode_expr]"],
+                "title_alias_open": "",
+                "title_alias_close": "",
+                "title_alias_separator": " / ",
+            }
+        ]
+        with self.assertRaisesRegex(SchemaValidationError, "缺少明确分隔符"):
+            generate_synthetic_records(payload, count=1, seed=21)
+
+    def test_title_alias_begin_provides_title_boundary(self) -> None:
+        payload = template_payload()
+        payload["name_template"] = [
+            {
+                "name": ["$title$title_alias [$episode_expr]"],
+                "title_alias_open": "",
+                "title_alias_begin": " / ",
+                "title_alias_close": "",
+                "title_alias_separator": " / ",
+            }
+        ]
+        record = generate_synthetic_records(payload, count=1, seed=23)[0]
+        self.assertIn(" / Demo / 演示", record["text"])
+
+    def test_multiple_aliases_without_separator_or_wrapper_is_rejected(self) -> None:
+        payload = template_payload()
+        payload["name_template"] = [
+            {
+                "name": ["$title_alias [$episode_expr]"],
+                "title_alias_open": "",
+                "title_alias_close": "",
+                "title_alias_separator": "",
+            }
+        ]
+        with self.assertRaisesRegex(SchemaValidationError, "title_alias_separator"):
+            generate_synthetic_records(payload, count=1, seed=22)
+
+    def test_each_alias_is_wrapped_when_separator_is_empty(self) -> None:
+        payload = template_payload()
+        payload["name_template"] = [
+            {
+                "name": ["$title$title_alias [$episode_expr]"],
+                "title_alias_open": "[",
+                "title_alias_close": "]",
+                "title_alias_separator": "",
+                "title_alias_begin": "",
+            }
+        ]
+        record = generate_synthetic_records(payload, count=1, seed=25)[0]
+        self.assertIn("[Demo][演示]", record["text"])
+
     def test_template_season_month_range_and_indexed_alias_are_generated(self) -> None:
         payload = template_payload()
         payload["title"] = [
@@ -156,6 +211,65 @@ class SyntheticDataTests(unittest.TestCase):
         self.assertTrue(any(item["label"] == "NOISE" and item["text"] == "4月新番" for item in record["spans"]))
         noise_start = record["text"].index("4月新番")
         self.assertEqual(record["labels"][noise_start], "B-NOISE")
+
+    def test_noise2_and_random_string_are_labeled(self) -> None:
+        payload = template_payload()
+        payload["name_template"] = [
+            {
+                "name": ["[$noise][$noise2]$title"],
+                "title_alias_open": "",
+                "title_alias_close": "",
+                "title_alias_separator": " / ",
+                "noise": ["检索:%random_str($title, 3)"],
+                "noise2": ["检索用:%random_str($title, 3)"],
+            }
+        ]
+        first = generate_synthetic_records(payload, count=1, seed=24)[0]
+        second = generate_synthetic_records(payload, count=1, seed=24)[0]
+        self.assertEqual(first, second)
+        noise_spans = [item for item in first["spans"] if item["label"] == "NOISE"]
+        self.assertEqual(len(noise_spans), 2)
+        for span in noise_spans:
+            prefix, fragment = str(span["text"]).split(":", maxsplit=1)
+            self.assertIn(prefix, {"检索", "检索用"})
+            self.assertGreaterEqual(len(fragment), 1)
+            self.assertLessEqual(len(fragment), 3)
+            self.assertIn(fragment, "示例作品 第二季")
+
+    def test_release_version_is_labeled_from_template_local_values(self) -> None:
+        payload = template_payload()
+        payload["name_template"] = [
+            {
+                "name": ["$title $episode_expr$release_version"],
+                "title_alias_open": "",
+                "title_alias_close": "",
+                "title_alias_separator": " / ",
+                "release_version": ["v%random(1)"],
+            }
+        ]
+        record = generate_synthetic_records(payload, count=1, seed=31)[0]
+        release_version = [item for item in record["spans"] if item["label"] == "RELEASE_VERSION"]
+        self.assertEqual(len(release_version), 1)
+        self.assertRegex(str(release_version[0]["text"]), r"^v[1-9]$")
+
+    def test_template_disable_condition_filters_titles_by_alias_count(self) -> None:
+        payload = template_payload()
+        payload["title"] = [
+            {"title": "单别名", "title_alias": ["One"], "season_expr": []},
+            {"title": "三别名", "title_alias": ["One", "Two", "Three"], "season_expr": []},
+        ]
+        payload["name_template"] = [
+            {
+                "name": ["$title$title_alias [$episode_expr]"],
+                "disable": ["%len($title_alias) > 2"],
+                "title_alias_open": "",
+                "title_alias_close": "",
+                "title_alias_separator": " / ",
+                "title_alias_begin": " / ",
+            }
+        ]
+        records = generate_synthetic_records(payload, count=12, seed=32)
+        self.assertTrue(all("三别名" not in str(record["text"]) for record in records))
 
     def test_season_titles_are_sampled_at_the_requested_rate(self) -> None:
         payload = template_payload()

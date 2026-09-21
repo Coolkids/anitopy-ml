@@ -33,4 +33,35 @@ class EvaluationTests(unittest.TestCase):
         )
         self.assertEqual(report["实体指标"]["F1"], 1.0)
         self.assertEqual(report["整条严格完全正确率"], 1.0)
+        self.assertEqual(report["核心字段指标"]["名称与别名联合"]["完全正确率"], 1.0)
+        self.assertEqual(report["核心字段整条完全正确率"], 1.0)
         self.assertEqual(report["接受策略统计"]["自动接收"], 1)
+
+    def test_name_and_alias_may_be_recognized_as_one_combined_boundary(self) -> None:
+        class CombinedNameParser:
+            def parse(self, title: str) -> ParseResult:
+                return ParseResult(
+                    raw_text=title,
+                    evidence={
+                        "title": Evidence(
+                            spans=(Span(0, len(title), title, "TITLE", source="model"),),
+                            source="model",
+                        )
+                    },
+                )
+
+        report = evaluate_records(
+            [
+                {
+                    "sample_id": "名称合并",
+                    "text": "中文名 / English Name",
+                    "labels": [
+                        "B-TITLE", "I-TITLE", "I-TITLE", "O",
+                        "O", "O", "B-TITLE_ALIAS", *["I-TITLE_ALIAS"] * 11,
+                    ],
+                }
+            ],
+            CombinedNameParser(),
+        )
+        self.assertEqual(report["整条严格完全正确率"], 0.0)
+        self.assertEqual(report["核心字段指标"]["名称与别名联合"]["完全正确率"], 1.0)

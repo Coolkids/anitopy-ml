@@ -106,6 +106,7 @@ class ExtractedFields:
     subtitle_languages: list[str] = field(default_factory=list)
     subtitle_mode: str | None = None
     release_groups: list[str] = field(default_factory=list)
+    release_version: str | None = None
     file_extension: str | None = None
 
 

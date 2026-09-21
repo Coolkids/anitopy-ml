@@ -8,7 +8,7 @@ from decimal import Decimal, InvalidOperation
 
 from anitopy_ml.errors import SchemaValidationError
 from anitopy_ml.normalizer import SourceRange, normalize_title
-from anitopy_ml.schemas import ExtractedFields
+from anitopy_ml.schemas import ExtractedFields, Span
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +46,7 @@ _SOURCE_TERMS = ("BDRemux", "BluRay", "WEB-DL", "WEBRip", "HDTV", "HDTS", "DVD")
 _VIDEO_CODECS = {"H.264": "H.264", "H264": "H.264", "AVC": "H.264", "HEVC": "H.265", "H.265": "H.265", "H265": "H.265"}
 _VIDEO_ENCODERS = ("x264", "x265")
 _AUDIO_CODECS = ("AAC", "FLAC", "AC3", "EAC3", "DDP", "DTS")
-_RESOLUTION = re.compile(r"(?i)\b(?:480p|720p|1080p|1080i|2160p|4K|8K)\b")
+_RESOLUTION = re.compile(r"(?i)\b(?:480p|720p|1080p|1080i|2160p|4K|8K|\d{3,4}x\d{3,4})\b")
 _SUBTITLE_MODE = {"内封": "内封", "内嵌": "内嵌", "外挂": "外挂"}
 _SUBTITLE_LANGUAGE = {"简体中文": "zh-Hans", "繁体中文": "zh-Hant", "简繁": "zh-Hans,zh-Hant", "简/繁": "zh-Hans,zh-Hant"}
 
@@ -89,6 +89,97 @@ def _unique_append(values: list[str], value: str) -> None:
     """按出现顺序写入不重复的字符串字段。"""
     if value not in values:
         values.append(value)
+
+
+def _append_episode(fields: ExtractedFields, raw: str, value: str, numbering: str = "unknown") -> None:
+    """写入不重复的规范化集数。"""
+    if not any(item["value"] == value and item["numbering"] == numbering for item in fields.episodes):
+        fields.episodes.append({"raw": raw, "value": value, "numbering": numbering})
+
+
+def _roman_number(value: str) -> int | None:
+    """将有限的罗马数字季标记转换为正整数。"""
+    symbols = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100, "D": 500, "M": 1000}
+    text = value.upper()
+    if not text or any(character not in symbols for character in text):
+        return None
+    total = 0
+    previous = 0
+    for character in reversed(text):
+        current = symbols[character]
+        if current < previous:
+            total -= current
+        else:
+            total += current
+            previous = current
+    return total if total > 0 else None
+
+
+def _season_number(raw: str) -> int | None:
+    """从模型已确认的季标记中提取唯一的正整数季数。"""
+    decimal = re.search(r"\d+", raw)
+    if decimal:
+        value = int(decimal.group(0))
+        return value if value > 0 else None
+    chinese = re.search(r"(?P<season>[一二三四五六七八九十百]+)\s*[季期]", raw)
+    if chinese:
+        return _chinese_number(chinese.group("season"))
+    roman = re.search(r"(?i)\b[ivxlcdm]+\b", raw)
+    return _roman_number(roman.group(0)) if roman else None
+
+
+def _update_release_kind(fields: ExtractedFields) -> None:
+    """依据已确认的季集信息更新发布类型。"""
+    if fields.special_type:
+        fields.release_kind = "special"
+    elif fields.declared_episode_count is not None:
+        fields.release_kind = "season_pack"
+    elif fields.episodes or fields.episode_ranges:
+        fields.release_kind = "episode"
+
+
+def enrich_fields_from_model_spans(fields: ExtractedFields, spans: tuple[Span, ...]) -> None:
+    """将模型识别出的发布组、季集和分辨率写入结构化字段。
+
+    仅处理模型已经明确给出标签的片段，不根据孤立数字猜测字段含义。
+    """
+    for span in spans:
+        raw = span.text.strip()
+        if span.label == "RELEASE_GROUP":
+            value = re.sub(r"[\[\]【】★]", "", raw).strip()
+            if value:
+                _unique_append(fields.release_groups, value)
+        elif span.label == "RELEASE_VERSION":
+            value = re.fullmatch(r"(?i)v(?P<version>\d+)", raw)
+            if value:
+                fields.release_version = f"v{int(value.group('version'))}"
+        elif span.label == "SEASON_EXPR":
+            value = _season_number(raw)
+            if value and value not in fields.seasons:
+                fields.seasons.append(value)
+        elif span.label == "EPISODE_EXPR":
+            match = re.search(r"\d+(?:\.\d+)?", raw)
+            if match and (value := _number(match.group(0))):
+                _append_episode(fields, match.group(0), value)
+        elif span.label == "EPISODE_COUNT_EXPR":
+            range_match = _RANGE.search(raw)
+            if range_match:
+                start = _number(range_match.group("start"))
+                end = _number(range_match.group("end"))
+                if start and end and Decimal(start) <= Decimal(end):
+                    item = {"raw": raw, "start": start, "end": end, "numbering": "unknown"}
+                    if item not in fields.episode_ranges:
+                        fields.episode_ranges.append(item)
+                    if Decimal(end) == Decimal(end).to_integral_value():
+                        fields.declared_episode_count = int(Decimal(end))
+                    continue
+            match = re.search(r"\d+(?:\.\d+)?", raw)
+            if match and (value := _number(match.group(0))) and Decimal(value) == Decimal(value).to_integral_value():
+                fields.declared_episode_count = int(Decimal(value))
+        elif span.label == "RESOLUTION" and _RESOLUTION.fullmatch(raw):
+            _unique_append(fields.resolution, raw)
+    _update_release_kind(fields)
+    validate_extracted_fields(fields)
 
 
 def extract_constraints(raw_text: str) -> ConstraintResult:

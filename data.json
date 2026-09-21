@@ -659,13 +659,18 @@
     {
         "name":
         [
+            "[$release_group] $title$title_alias [$episode_expr$release_version][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
             "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
             "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]",
             "[$release_group] $title [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en].$file_extension"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
-        "title_alias_separator":" "
+        "title_alias_separator":" ",
+        "title_alias_begin":" ",
+        "release_version":[
+          "v%random(1)"
+        ]
     },
     {
         "name":
@@ -675,7 +680,8 @@
         ],
         "title_alias_open":"",
         "title_alias_close":"",
-        "title_alias_separator":" "
+        "title_alias_separator":" ",
+        "title_alias_begin":" "
     },
     {
         "name":
@@ -684,21 +690,36 @@
             "[$release_group] $title$title_alias [$episode_count_expr] [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_chs&subtitle_mode]",
             "[$release_group] $title - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
             "[$release_group] $title - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
             "[$release_group] $title$title_alias E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
             "[$release_group] $title$title_alias - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
-        "title_alias_separator":" / "
+        "title_alias_separator":" / ",
+        "title_alias_begin":" / ",
+        "release_version":[
+          "v%random(1)"
+        ]
     },
     {
         "name":
         [
-            "$release_group★$title@$title_alias@★$episode_count_expr★$video_term &audio_term $file_extension★&subtitle_language_chs&subtitle_mode"
+            "$release_group★$title$title_alias★$episode_count_expr★$video_term &audio_term $file_extension★&subtitle_language_chs&subtitle_mode",
+            "$release_group★$title$title_alias★$episode_count_expr★$video_term &audio_term $file_extension★&subtitle_language_chs&subtitle_mode★$noise"
+        ],
+        "disable": [
+          "%len($title_alias) > 2"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
-        "title_alias_separator":" "
+        "title_alias_separator":" ",
+        "title_alias_begin":" ",
+        "noise":[
+          "检索:%random_str($title, 5)",
+          "检索用:%random_str($title, 5)"
+        ]
     },
     {
         "name":
@@ -708,39 +729,71 @@
         ],
         "title_alias_open":"",
         "title_alias_close":"",
-        "title_alias_separator":" / "
+        "title_alias_separator":" / ",
+        "title_alias_begin":" / "
+
     },
     {
         "name":
         [
             "[$release_group][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]",
             "[$release_group][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode][$noise]",
-            "[$release_group][$noise][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]"
+            "[$release_group][$noise][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode][$noise2]",
+            "[$release_group][$noise][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]($noise2)"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
         "title_alias_separator":"/",
+        "title_alias_begin":"/",
         "noise":[
           "1月新番",
           "4月新番",
           "7月新番",
           "10月新番"
+        ],
+        "noise2":[
+          "检索:%random_str($title, 5)",
+          "检索用:%random_str($title, 5)"
+        ]
+    },
+    {
+        "name":
+        [
+            "[$release_group][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]($noise)",
+            "[$release_group][$title$title_alias][$episode_expr$release_version][&resolution][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group][$title$title_alias][$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode][$noise]"
+        ],
+        "title_alias_open":"",
+        "title_alias_close":"",
+        "title_alias_separator":"/",
+        "title_alias_begin":"/",
+        "noise":[
+          "检索:%random_str($title, 5)",
+          "检索用:%random_str($title, 5)"
+        ],
+        "release_version":[
+          "v%random(1)"
         ]
     },
     {
         "name":
         [
             "[$release_group][$title]$title_alias[$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group][$title]$title_alias[$episode_expr$release_version][&resolution][&subtitle_language_chs&subtitle_mode]",
             "[$release_group][$noise][$title]$title_alias[$episode_expr][&resolution][&subtitle_language_chs&subtitle_mode]"
         ],
         "title_alias_open":"[",
         "title_alias_close":"]",
         "title_alias_separator":"",
+        "title_alias_begin":"",
         "noise":[
           "1月新番",
           "4月新番",
           "7月新番",
           "10月新番"
+        ],
+        "release_version":[
+          "v%random(1)"
         ]
     },
     {
@@ -748,17 +801,29 @@
         [
             "[$release_group] $title_en - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
             "[$release_group] $title_en - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title_en - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title_en - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
             "[$release_group] $title_en E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
             "[$release_group] $title_en - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
             "[$release_group] $title_en $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
-            "[$release_group] $title_en - $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
+            "[$release_group] $title_en - $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "$title_en - $episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
+            "$title_en - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
+            "$title_en E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "$title_en - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "$title_en $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+            "$title_en - $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
         ],
         "exclude_title_season_expr": true,
         "title_alias_open":"",
         "title_alias_close":"",
         "title_alias_separator":"",
+        "title_alias_begin":"",
         "season_expr":[
           "S0%random_range(1-6)"
+        ],
+        "release_version":[
+          "v%random(1)"
         ]
     }
   ]

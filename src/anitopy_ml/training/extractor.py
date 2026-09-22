@@ -19,7 +19,7 @@ from anitopy_ml.modeling.model import create_extractor_model
 from anitopy_ml.modeling.runtime import require_training_dependencies
 from anitopy_ml.training.control import EarlyStopping, TrainingProgress
 from anitopy_ml.training.objectives import masked_multitask_loss
-from anitopy_ml.training.checkpoint import write_checkpoint_metadata
+from anitopy_ml.training.checkpoint import read_checkpoint_metadata, write_checkpoint_metadata
 from anitopy_ml.training.trainer import save_torch_training_state
 from anitopy_ml.training.augment import augment_train_records
 
@@ -121,6 +121,46 @@ def _batches(records: list[dict[str, Any]], batch_size: int) -> list[list[dict[s
     return [records[index : index + batch_size] for index in range(0, len(records), batch_size)]
 
 
+def load_initial_model_weights(
+    model: Any,
+    *,
+    source_directory: str | Path,
+    output_directory: str | Path,
+    model_config: ExtractorModelConfig,
+) -> dict[str, object]:
+    """只加载兼容检查点权重，为新数据版本重新开始优化。"""
+    source = Path(source_directory)
+    output = Path(output_directory)
+    if source.resolve() == output.resolve():
+        raise InputValidationError("权重初始化来源目录不能与新的训练输出目录相同。")
+    metadata = read_checkpoint_metadata(source)
+    source_config = metadata["模型配置"]
+    expected = {
+        "模型名称": model_config.model_name,
+        "模型版本": model_config.model_revision,
+        "标签": list(model_config.labels),
+    }
+    if any(source_config.get(key) != value for key, value in expected.items()):
+        raise ConfigurationError("初始化检查点的模型名称、版本或BIO标签与当前训练不兼容。")
+    weights_path = source / "best_model.pt"
+    if not weights_path.is_file():
+        raise InputValidationError(f"初始化目录缺少best_model.pt：{source}。")
+    torch, _ = require_training_dependencies()
+    try:
+        state = torch.load(weights_path, map_location="cpu", weights_only=True)
+        if not isinstance(state, dict):
+            raise TypeError
+        model.load_state_dict(state, strict=True)
+    except (OSError, RuntimeError, TypeError, ValueError) as error:
+        raise ConfigurationError("初始化检查点权重无效或与当前抽取模型结构不兼容。") from error
+    return {
+        "方式": "仅加载best_model.pt；优化器、随机状态和校准文件均不继承",
+        "来源目录": str(source),
+        "来源权重SHA256": hashlib.sha256(weights_path.read_bytes()).hexdigest(),
+        "来源训练数据清单SHA256": metadata["训练进度"]["training_manifest_sha256"],
+    }
+
+
 def _pad_character_batch(batch: list[dict[str, Any]], pad_token_id: int) -> dict[str, list[list[int]]]:
     """分别填充分词器序列与字符序列，保持字符标签完整。"""
     token_length = max(len(item["input_ids"]) for item in batch)
@@ -184,6 +224,7 @@ def train_extractor(
     max_length: int,
     device_name: str = "auto",
     augment_whitespace: bool = False,
+    initial_model_dir: str | Path | None = None,
     seed: int = 20260918,
 ) -> dict[str, object]:
     """训练离线 XLM-R 抽取模型并返回中文实验报告。"""
@@ -222,10 +263,21 @@ def train_extractor(
         raise ConfigurationError("本地缺少XLM-R分词器文件；请先下载并缓存模型后再离线训练。") from error
     if not getattr(tokenizer, "is_fast", False):
         raise ConfigurationError("XLM-R训练必须使用支持偏移映射的快速分词器。")
+    output = Path(output_dir)
     try:
         model = create_extractor_model(model_config, local_files_only=True).to(device)
     except OSError as error:
         raise ConfigurationError("本地缺少XLM-R模型权重；请先下载并缓存模型后再离线训练。") from error
+    weight_initialization = (
+        load_initial_model_weights(
+            model,
+            source_directory=initial_model_dir,
+            output_directory=output,
+            model_config=model_config,
+        )
+        if initial_model_dir is not None
+        else None
+    )
     raw_train = _read_jsonl(directory / "train.jsonl")
     augmented_train = augment_train_records(raw_train) if augment_whitespace else []
     train, train_issues = _prepare_records(
@@ -237,7 +289,6 @@ def train_extractor(
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
     stopper = EarlyStopping(config.early_stopping_patience)
-    output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
     history: list[dict[str, object]] = []
     best_f1 = -1.0
@@ -289,6 +340,7 @@ def train_extractor(
                 training_manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
             ),
             model_config={"模型名称": model_config.model_name, "模型版本": model_config.model_revision, "标签": list(labels)},
+            weight_initialization=weight_initialization,
         )
         if should_stop:
             break
@@ -303,6 +355,7 @@ def train_extractor(
         "最佳验证实体F1": best_f1,
         "耗时秒": round(perf_counter() - started_at, 2),
         "训练数据清单SHA256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        "权重初始化": weight_initialization,
         "随机种子": seed,
         "训练配置": {
             "学习率": config.learning_rate,

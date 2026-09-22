@@ -128,6 +128,11 @@ def _season_number(raw: str) -> int | None:
     return _roman_number(roman.group(0)) if roman else None
 
 
+def parse_season_expression(raw: str) -> int | None:
+    """将已识别的季数表达转换为正整数，供评测和结构化结果复用。"""
+    return _season_number(raw)
+
+
 def _update_release_kind(fields: ExtractedFields) -> None:
     """依据已确认的季集信息更新发布类型。"""
     if fields.special_type:

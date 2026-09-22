@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Protocol, Sequence
 
 from anitopy_ml.api import MediaParser
+from anitopy_ml.constraints import parse_season_expression
 from anitopy_ml.errors import InputValidationError, SchemaValidationError
 from anitopy_ml.inference.decoding import spans_from_bio
 from anitopy_ml.schemas import ParseResult, Span
@@ -50,20 +53,76 @@ def _combined_extent(
     return min(start for start, _ in ranges), max(end for _, end in ranges)
 
 
+def _numeric_value(raw: str) -> str | None:
+    """将正数文本标准化为可稳定比较的十进制字符串。"""
+    try:
+        value = Decimal(raw)
+    except InvalidOperation:
+        return None
+    if value <= 0:
+        return None
+    return format(value.normalize(), "f")
+
+
+def _expected_seasons(spans: Sequence[Span]) -> tuple[int, ...]:
+    """从金标季数片段构造整数季数集合。"""
+    return tuple(sorted({value for span in spans if span.label == "SEASON_EXPR" if (value := parse_season_expression(span.text)) is not None}))
+
+
+def _expected_episodes(spans: Sequence[Span]) -> tuple[tuple[str, ...], ...]:
+    """从金标集数片段构造单集、范围和总集数的语义集合。"""
+    values: set[tuple[str, ...]] = set()
+    for span in spans:
+        if span.label not in _EPISODE_LABELS:
+            continue
+        range_match = re.search(r"(?P<start>\d+(?:\.\d+)?)\s*(?:~|-|至|到)\s*(?P<end>\d+(?:\.\d+)?)", span.text)
+        if span.label == "EPISODE_COUNT_EXPR" and range_match:
+            start = _numeric_value(range_match.group("start"))
+            end = _numeric_value(range_match.group("end"))
+            if start and end:
+                values.add(("范围", start, end))
+                values.add(("总集数", end))
+            continue
+        number_match = re.search(r"\d+(?:\.\d+)?", span.text)
+        if number_match and (value := _numeric_value(number_match.group(0))):
+            kind = "总集数" if span.label == "EPISODE_COUNT_EXPR" else "单集"
+            values.add((kind, value))
+    return tuple(sorted(values))
+
+
+def _predicted_episodes(extracted: object) -> tuple[tuple[str, ...], ...]:
+    """从解析输出构造与金标一致的集数语义集合。"""
+    values: set[tuple[str, ...]] = set()
+    for item in getattr(extracted, "episodes", []):
+        if isinstance(item, dict) and (value := _numeric_value(str(item.get("value", "")))):
+            values.add(("单集", value))
+    for item in getattr(extracted, "episode_ranges", []):
+        if not isinstance(item, dict):
+            continue
+        start = _numeric_value(str(item.get("start", "")))
+        end = _numeric_value(str(item.get("end", "")))
+        if start and end:
+            values.add(("范围", start, end))
+    declared = getattr(extracted, "declared_episode_count", None)
+    if isinstance(declared, int) and declared > 0:
+        values.add(("总集数", str(declared)))
+    return tuple(sorted(values))
+
+
 def _core_checks(
-    expected: set[tuple[str, int, int]], predicted: set[tuple[str, int, int]]
+    expected: set[tuple[str, int, int]], predicted: set[tuple[str, int, int]], expected_spans: Sequence[Span], extracted: object
 ) -> dict[str, bool | None]:
-    """计算发布核心字段的样本级正确性，忽略非核心字段差异。"""
+    """计算发布核心字段的样本级正确性，季集按结构化数值语义比较。"""
     expected_name = _combined_extent(expected, _NAME_LABELS)
     predicted_name = _combined_extent(predicted, _NAME_LABELS)
-    expected_season = {key for key in expected if key[0] == "SEASON_EXPR"}
-    predicted_season = {key for key in predicted if key[0] == "SEASON_EXPR"}
-    expected_episode = _combined_extent(expected, _EPISODE_LABELS)
-    predicted_episode = _combined_extent(predicted, _EPISODE_LABELS)
+    expected_season = _expected_seasons(expected_spans)
+    predicted_season = tuple(sorted(set(getattr(extracted, "seasons", []))))
+    expected_episode = _expected_episodes(expected_spans)
+    predicted_episode = _predicted_episodes(extracted)
     return {
         "名称与别名联合": expected_name == predicted_name if expected_name is not None else None,
         "季数": expected_season == predicted_season if expected_season else None,
-        "集数": expected_episode == predicted_episode if expected_episode is not None else None,
+        "集数": expected_episode == predicted_episode if expected_episode else None,
     }
 
 
@@ -78,14 +137,23 @@ def evaluate_records(records: Sequence[dict[str, Any]], parser: ParserProtocol) 
     core_full_applicable = core_full_correct = 0
     policy = {"自动接收": 0, "需要复核": 0, "未校准": 0}
     errors: list[dict[str, object]] = []
-    for record in records:
+    parsed_results: list[ParseResult] | None = None
+    if isinstance(parser, MediaParser):
+        parsed_results = []
+        for offset in range(0, len(records), 32):
+            titles = [str(record.get("text", "")) for record in records[offset : offset + 32]]
+            batch = parser.parse_batch(titles, on_error="raise")
+            if not all(isinstance(result, ParseResult) for result in batch):
+                raise SchemaValidationError("模型批量评测返回了无效解析结果。")
+            parsed_results.extend(batch)
+    for record_index, record in enumerate(records):
         text = record.get("text")
         labels = record.get("labels")
         sample_id = record.get("sample_id", "未知样本")
         if not isinstance(text, str) or not isinstance(labels, list) or len(text) != len(labels):
             raise SchemaValidationError("冻结测试记录缺少与原文等长的字符级BIO标签。")
         expected_spans = spans_from_bio(text, labels)
-        result = parser.parse(text)
+        result = parsed_results[record_index] if parsed_results is not None else parser.parse(text)
         predicted_spans = tuple(
             span for evidence in result.evidence.values() if evidence.source == "model" for span in evidence.spans
         )
@@ -97,7 +165,7 @@ def evaluate_records(records: Sequence[dict[str, Any]], parser: ParserProtocol) 
         total_correct += len(correct_keys)
         if predicted_keys == expected_keys:
             full_correct += 1
-        checks = _core_checks(expected_keys, predicted_keys)
+        checks = _core_checks(expected_keys, predicted_keys, expected_spans, result.extracted)
         applicable_checks = [
             (name, correct) for name, correct in checks.items() if correct is not None
         ]
@@ -193,6 +261,23 @@ def evaluate_extractor(
     report = evaluate_records(records, parser)
     report["模型目录"] = str(model_directory)
     report["冻结测试文件"] = str(test_path)
+    target = Path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return report
+
+
+def evaluate_validation_extractor(
+    *, model_directory: str | Path, validation_path: str | Path, output_path: str | Path, device: str = "auto"
+) -> dict[str, object]:
+    """只使用验证分区评测候选模型，绝不读取冻结测试。"""
+    records = _read_records(validation_path)
+    parser = MediaParser.from_pretrained(model_directory, device=device)
+    report = evaluate_records(records, parser)
+    report["说明"] = "这是候选选择用的模板验证集评测，不代表真实发布标题准确率，也不能替代冻结测试。"
+    report["验证样本数"] = report.pop("测试样本数")
+    report["模型目录"] = str(model_directory)
+    report["验证文件"] = str(validation_path)
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

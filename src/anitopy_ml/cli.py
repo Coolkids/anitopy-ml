@@ -94,6 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
     split_synthetic.add_argument("--input", required=True, help="模板训练JSONL路径。")
     split_synthetic.add_argument("--output-dir", required=True, help="三个分区及清单输出目录。")
     split_synthetic.add_argument("--seed", type=int, default=20260918, help="稳定划分随机种子。")
+    split_synthetic.add_argument("--template-coverage", action="store_true", help="仅隔离作品，并要求每个分区覆盖全部模板条目。")
     audit_synthetic = data_commands.add_parser("audit-synthetic", help="审计模板覆盖、BIO一致性和跨批重复。")
     audit_synthetic.add_argument("--input", required=True, nargs="+", help="一个或多个合成JSONL文件路径。")
     audit_synthetic.add_argument("--output", required=True, help="审计JSON报告路径。")
@@ -141,6 +142,7 @@ def build_parser() -> argparse.ArgumentParser:
     extractor.add_argument("--max-length", type=int, default=256, help="分词后的最大长度。")
     extractor.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto", help="训练设备。")
     extractor.add_argument("--augment-whitespace", action="store_true", help="仅对训练分区追加空白增强样本。")
+    extractor.add_argument("--init-model", help="仅加载兼容旧检查点权重，并以新数据重新开始优化。")
     extractor.add_argument("--seed", type=int, default=20260918, help="训练随机种子。")
     compare_runs = train_commands.add_parser("compare-runs", help="汇总固定配置下的多随机种子实验。")
     compare_runs.add_argument("--runs", nargs="+", required=True, help="各训练输出目录。")
@@ -161,6 +163,11 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--test", required=True, help="冻结测试JSONL路径。")
     evaluate.add_argument("--output", required=True, help="评测报告JSON输出路径。")
     evaluate.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto", help="评测推理设备。")
+    evaluate_validation = subparsers.add_parser("evaluate-validation", help="只使用验证集评测候选模型。")
+    evaluate_validation.add_argument("--model", required=True, help="候选本地模型目录。")
+    evaluate_validation.add_argument("--validation", required=True, help="未用于训练的验证集JSONL路径。")
+    evaluate_validation.add_argument("--output", required=True, help="验证评测报告JSON输出路径。")
+    evaluate_validation.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto", help="评测推理设备。")
 
     parse_command = subparsers.add_parser("parse", help="使用本地模型解析单条标题。")
     parse_command.add_argument("title", help="要解析的原始标题。")
@@ -312,7 +319,9 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.command == "data" and arguments.data_command == "split-synthetic":
             with Path(arguments.input).open(encoding="utf-8") as stream:
                 records = [json.loads(line) for line in stream if line.strip()]
-            splits, report = split_synthetic_records(records, seed=arguments.seed)
+            splits, report = split_synthetic_records(
+                records, seed=arguments.seed, template_coverage=arguments.template_coverage
+            )
             manifest = write_synthetic_splits(splits, report, arguments.output_dir)
             counts = manifest["分区样本数"]
             print(
@@ -428,6 +437,7 @@ def main(argv: list[str] | None = None) -> int:
                 max_length=arguments.max_length,
                 device_name=arguments.device,
                 augment_whitespace=arguments.augment_whitespace,
+                initial_model_dir=arguments.init_model,
                 seed=arguments.seed,
             )
             print(
@@ -489,6 +499,21 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 f"冻结测试评测完成：实体F1为 {report['实体指标']['F1']:.4f}，"
                 f"整条严格完全正确率为 {report['整条严格完全正确率']:.4f}。"
+            )
+            return 0
+        if arguments.command == "evaluate-validation":
+            from anitopy_ml.training.evaluate import evaluate_validation_extractor
+
+            report = evaluate_validation_extractor(
+                model_directory=arguments.model,
+                validation_path=arguments.validation,
+                output_path=arguments.output,
+                device=arguments.device,
+            )
+            print(
+                "验证集评测完成："
+                f"实体F1为 {report['实体指标']['F1']:.4f}，"
+                f"报告已写入 {arguments.output}。"
             )
             return 0
         if arguments.command == "parse":

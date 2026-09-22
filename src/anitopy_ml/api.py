@@ -166,7 +166,7 @@ class MediaParser:
         if not isinstance(title, str) or not title.strip():
             raise InputValidationError("标题不能为空。")
         if self._tokenizer is not None:
-            return self._parse_extractor(title)
+            return self._parse_extractor_batch([title])[0]
         torch, _ = require_training_dependencies()
         if self._vocabulary is None:
             raise ConfigurationError("字符模型词表缺失。")
@@ -263,6 +263,74 @@ class MediaParser:
             result.warnings.append("标题超过当前XLM-R单窗口长度，尾部文本尚未参与模型预测。")
         return self._apply_acceptance_policy(result)
 
+    def _parse_extractor_batch(self, titles: Sequence[str]) -> list[ParseResult]:
+        """批量执行字符边界 XLM-R 推理，保留单条解析的原文证据语义。"""
+        if not titles:
+            return []
+        if not self._character_boundary:
+            return [self._parse_extractor(title) for title in titles]
+        torch, _ = require_training_dependencies()
+        if self._tokenizer is None:
+            raise ConfigurationError("XLM-R分词器缺失。")
+        encoded = self._tokenizer(
+            list(titles),
+            return_offsets_mapping=True,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=256,
+        )
+        offset_batches = [
+            [tuple(map(int, item)) for item in offsets]
+            for offsets in encoded["offset_mapping"].tolist()
+        ]
+        max_characters = max(len(title) for title in titles)
+        owners_rows: list[list[int]] = []
+        character_rows: list[list[int]] = []
+        position_rows: list[list[int]] = []
+        for title, offsets in zip(titles, offset_batches, strict=True):
+            owners = [0] * max_characters
+            positions = [0] * max_characters
+            for token_index, (start, end) in enumerate(offsets):
+                if start == end:
+                    continue
+                for character_index in range(start, min(end, len(title))):
+                    owners[character_index] = token_index
+                    positions[character_index] = min(character_index - start, 31)
+            owners_rows.append(owners)
+            character_rows.append([ord(character) for character in title] + [0] * (max_characters - len(title)))
+            position_rows.append(positions)
+        inputs = encoded["input_ids"].to(self._device)
+        attention = encoded["attention_mask"].to(self._device)
+        self._model.eval()
+        with torch.no_grad():
+            logits = self._model(
+                inputs,
+                attention,
+                torch.tensor(owners_rows, device=self._device),
+                torch.tensor(character_rows, device=self._device),
+                torch.tensor(position_rows, device=self._device),
+            )["character_logits"]
+            probabilities = torch.softmax(logits, dim=-1)
+        label_to_id = {label: index for index, label in enumerate(self._labels)}
+        results: list[ParseResult] = []
+        for row_index, title in enumerate(titles):
+            title_logits = logits[row_index, : len(title)]
+            decoded = constrained_bio_decode(title_logits.detach().cpu().tolist(), self._labels)
+            confidences = [
+                float(probabilities[row_index, character_index, label_to_id[label]].item())
+                for character_index, label in enumerate(decoded)
+            ]
+            result = build_parse_result(
+                title,
+                decoded,
+                confidences=confidences,
+                model_version=self._model_version,
+                confidence_transform=self._calibrator.calibrate if self._calibrator else None,
+            )
+            results.append(self._apply_acceptance_policy(result))
+        return results
+
     def _apply_acceptance_policy(self, result: ParseResult) -> ParseResult:
         """保留低置信度原文证据，同时明确哪些模型字段需要人工复核。"""
         if self._acceptance_policy is None:
@@ -295,6 +363,23 @@ class MediaParser:
         """按输入顺序解析，选择记录错误时不会中断其余标题。"""
         if on_error not in {"raise", "record"}:
             raise ConfigurationError("批量错误策略只能是raise或record。")
+        if self._tokenizer is not None:
+            results: list[ParseResult | dict[str, object] | None] = [None] * len(titles)
+            valid: list[tuple[int, str]] = []
+            for index, title in enumerate(titles):
+                if isinstance(title, str) and title.strip():
+                    valid.append((index, title))
+                    continue
+                error = InputValidationError("标题不能为空。")
+                if on_error == "raise":
+                    raise error
+                results[index] = {"raw_text": title, "status": "error", "warnings": [str(error)]}
+            for offset in range(0, len(valid), 32):
+                batch = valid[offset : offset + 32]
+                parsed = self._parse_extractor_batch([title for _, title in batch])
+                for (index, _), result in zip(batch, parsed, strict=True):
+                    results[index] = result
+            return [result for result in results if result is not None]
         results: list[ParseResult | dict[str, object]] = []
         for title in titles:
             try:

@@ -15,6 +15,7 @@ def write_checkpoint_metadata(
     *,
     progress: TrainingProgress,
     model_config: dict[str, Any],
+    weight_initialization: dict[str, Any] | None = None,
 ) -> Path:
     """原子写入训练恢复元数据；权重和优化器由训练器同目录保存。"""
     progress.validate()
@@ -22,12 +23,11 @@ def write_checkpoint_metadata(
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / "checkpoint_metadata.json"
     temporary = target.with_suffix(".json.tmp")
+    payload: dict[str, Any] = {"版本": 1, "训练进度": progress.model_dump(), "模型配置": model_config}
+    if weight_initialization is not None:
+        payload["权重初始化"] = weight_initialization
     temporary.write_text(
-        json.dumps(
-            {"版本": 1, "训练进度": progress.model_dump(), "模型配置": model_config},
-            ensure_ascii=False,
-            indent=2,
-        )
+        json.dumps(payload, ensure_ascii=False, indent=2)
         + "\n",
         encoding="utf-8",
     )

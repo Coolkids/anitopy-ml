@@ -350,3 +350,23 @@ class SyntheticDataTests(unittest.TestCase):
         ]
         _, report = split_synthetic_records(records, seed=10)
         self.assertEqual(report["分区作品数"], {"train": 8, "validation": 1, "test": 1})
+
+    def test_work_isolation_can_cover_every_template_entry_in_every_split(self) -> None:
+        records = [
+            {
+                "sample_id": f"样本-{work_index}-{template_index}",
+                "template_group_id": f"模板组{template_index}",
+                "template_entry_id": f"模板条目{template_index}",
+                "template": f"模板{template_index}",
+                "spans": [{"label": "TITLE", "text": f"作品{work_index}"}],
+            }
+            for work_index in range(20)
+            for template_index in range(4)
+        ]
+        splits, report = split_synthetic_records(records, seed=12, template_coverage=True)
+        all_entries = {"模板条目0", "模板条目1", "模板条目2", "模板条目3"}
+        for values in splits.values():
+            self.assertEqual({record["template_entry_id"] for record in values}, all_entries)
+        self.assertEqual(report["双隔离排除样本数"], 0)
+        self.assertEqual(report["分区模板条目数"], {"train": 4, "validation": 4, "test": 4})
+        self.assertEqual(report["划分策略"], "作品隔离且每个分区覆盖全部模板条目")

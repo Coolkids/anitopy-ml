@@ -35,7 +35,10 @@ _SEASON_EPISODE = re.compile(
 )
 _SEASON_ONLY = re.compile(r"(?i)\bS(?P<season>\d{1,2})(?![A-Z0-9])")
 _CHINESE_SEASON = re.compile(r"第?\s*(?P<season>[0-9一二三四五六七八九十百]+)\s*季")
-_RANGE = re.compile(r"(?i)(?:EP|E)?\s*(?P<start>\d+(?:\.\d+)?)\s*(?:~|-|至|到)\s*(?:EP|E)?\s*(?P<end>\d+(?:\.\d+)?)")
+_RANGE = re.compile(
+    r"(?i)(?<![A-Za-z0-9])(?:EP|E)?\s*(?P<start>\d+(?:\.\d+)?)\s*"
+    r"(?:~|-|至|到)\s*(?:EP|E)?\s*(?P<end>\d+(?:\.\d+)?)(?![A-Za-z0-9])"
+)
 _EPISODE = re.compile(r"(?i)\b(?:EP|E|Episode)\s*(?P<episode>\d+(?:\.\d+)?)")
 _CHINESE_EPISODE = re.compile(r"第\s*(?P<episode>[0-9一二三四五六七八九十百]+)\s*[集话話]")
 _DECLARED_COUNT = re.compile(r"全\s*(?P<count>\d+)\s*[集话話]")

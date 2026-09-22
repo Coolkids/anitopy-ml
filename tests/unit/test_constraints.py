@@ -38,6 +38,13 @@ class ConstraintTests(unittest.TestCase):
         self.assertEqual(values, ["1", "3", "12.5"])
         self.assertEqual(result.fields.episode_ranges, [])
 
+    def test_video_bit_depth_is_not_an_episode_range(self) -> None:
+        result = extract_constraints("示例作品 [01-12 END][AV1-8bit]")
+        self.assertEqual(
+            result.fields.episode_ranges,
+            [{"raw": "01-12", "start": "1", "end": "12", "numbering": "unknown"}],
+        )
+
     def test_special_type_is_not_mapped_to_a_season(self) -> None:
         result = extract_constraints("示例作品 NCOP SP 1080p")
         self.assertEqual(result.fields.special_type, "NCOP")

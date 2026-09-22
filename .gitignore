@@ -20,3 +20,6 @@ configs/authorization.yaml
 # 编辑器
 .idea/
 .vscode/
+
+plan.md
+task.md

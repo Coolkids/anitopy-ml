@@ -136,7 +136,7 @@ docker build -t anitopy-ml:v11 .
 docker run --rm -p 8000:8000 anitopy-ml:v11
 ```
 
-接口约定、环境变量、Docker 构建参数与调用示例见 [接口服务说明](docs/接口服务.md) 和 [OpenAPI 文件](docs/接口定义.openapi.yaml)。GitHub Actions 会在发布 Release 时构建并推送 `ghcr.io/coolkids/anitopy-ml` 镜像。
+接口约定、环境变量、Docker 构建参数与调用示例见 [接口服务说明](docs/接口服务.md)、[Docker 容器部署](docs/Docker容器部署.md) 和 [OpenAPI 文件](docs/接口定义.openapi.yaml)。GitHub Actions 会在发布 Release 时构建并推送 `ghcr.io/coolkids/anitopy-ml` 镜像。
 
 ## 输出说明
 

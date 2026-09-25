@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 检出发布源码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.release.tag_name || github.sha }}
 
@@ -35,7 +35,7 @@ jobs:
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: 登录 GitHub 容器镜像仓库
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -43,7 +43,7 @@ jobs:
 
       - name: 生成镜像标签
         id: metadata
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/anitopy-ml
           tags: |
@@ -51,7 +51,7 @@ jobs:
             type=raw,value=latest
 
       - name: 构建并推送镜像
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: true

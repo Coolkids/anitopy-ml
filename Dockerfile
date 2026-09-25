@@ -37,5 +37,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=3 \
   CMD /app/.venv/bin/python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=10)" || exit 1
 
-ENTRYPOINT ["/usr/local/bin/anitopy-ml-entrypoint"]
+ENTRYPOINT ["/app/.venv/bin/python", "/usr/local/bin/anitopy-ml-entrypoint"]
 CMD ["/app/.venv/bin/gunicorn", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "4", "--timeout", "120", "anitopy_ml.webapi.wsgi:application"]

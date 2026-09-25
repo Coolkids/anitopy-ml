@@ -129,14 +129,17 @@ $env:ANITOPY_MODEL_DIR = "artifacts/releases/anitopy-ml-v11"
 uv run anitopy-ml-webapi --host 127.0.0.1 --port 8000
 ```
 
-默认 Docker 镜像会在构建阶段下载 V11 模型包与基础模型，运行时使用 Web API 模式：
+Docker 镜像不包含模型权重，会在首次容器启动时下载到持久化卷，运行时使用 Web API 模式：
 
 ```powershell
 docker build -t anitopy-ml:v11 .
-docker run --rm -p 8000:8000 anitopy-ml:v11
+docker run --rm -p 8000:8000 `
+  -v anitopy-ml-models:/opt/anitopy-ml/models `
+  -v anitopy-ml-huggingface:/opt/anitopy-ml/huggingface `
+  anitopy-ml:v11
 ```
 
-接口约定、环境变量、Docker 构建参数与调用示例见 [接口服务说明](docs/接口服务.md)、[Docker 容器部署](docs/Docker容器部署.md) 和 [OpenAPI 文件](docs/接口定义.openapi.yaml)。GitHub Actions 会在发布 Release 时构建并推送 `ghcr.io/coolkids/anitopy-ml` 镜像。
+接口约定、环境变量、Docker Compose、模型持久化与更新示例见 [接口服务说明](docs/接口服务.md)、[Docker 容器部署](docs/Docker容器部署.md) 和 [OpenAPI 文件](docs/接口定义.openapi.yaml)。GitHub Actions 会在发布 Release 时构建并推送 `ghcr.io/coolkids/anitopy-ml` 镜像。
 
 ## 输出说明
 

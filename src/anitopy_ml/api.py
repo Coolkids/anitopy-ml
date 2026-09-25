@@ -354,6 +354,11 @@ class MediaParser:
             return "未校准" if not calibrated else "需要复核"
         return self._acceptance_policy.decide(label, confidence, calibrated)
 
+    @property
+    def model_version(self) -> str:
+        """返回当前加载模型的稳定版本说明。"""
+        return self._model_version
+
     def parse_batch(
         self,
         titles: Sequence[str],

@@ -8,15 +8,23 @@ dependencies = []
 [project.optional-dependencies]
 dev = []
 tmdb = []
+inference = [
+    "torch==2.14.0",
+    "transformers>=4.45",
+]
 train = [
     "torch==2.14.0",
     "transformers>=4.45",
 ]
 review = []
-serve = []
+serve = [
+    "Django>=5.2,<5.3",
+    "gunicorn>=23,<24",
+]
 
 [project.scripts]
 anitopy-ml = "anitopy_ml.cli:main"
+anitopy-ml-webapi = "anitopy_ml.webapi.__main__:main"
 
 [build-system]
 requires = ["setuptools>=68"]

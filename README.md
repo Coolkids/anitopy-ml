@@ -119,6 +119,25 @@ uv run python tools/model_verify_app.py `
 
 浏览器访问 `http://127.0.0.1:8765`。页面不保存输入标题，优先显示标题、别名、季数和集数。
 
+## 本地 Web API 与 Docker
+
+Django 服务提供 `GET /healthz`、`POST /v1/parse` 和 `POST /v1/parse-batch`。本地启动：
+
+```powershell
+uv sync --extra inference --extra serve
+$env:ANITOPY_MODEL_DIR = "artifacts/releases/anitopy-ml-v11"
+uv run anitopy-ml-webapi --host 127.0.0.1 --port 8000
+```
+
+默认 Docker 镜像会在构建阶段下载 V11 模型包与基础模型，运行时使用 Web API 模式：
+
+```powershell
+docker build -t anitopy-ml:v11 .
+docker run --rm -p 8000:8000 anitopy-ml:v11
+```
+
+接口约定、环境变量、Docker 构建参数与调用示例见 [接口服务说明](docs/接口服务.md) 和 [OpenAPI 文件](docs/接口定义.openapi.yaml)。GitHub Actions 会在发布 Release 时构建并推送 `ghcr.io/coolkids/anitopy-ml` 镜像。
+
 ## 输出说明
 
 - `extracted`：规范化后的结构化字段。

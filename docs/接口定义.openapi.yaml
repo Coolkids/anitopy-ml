@@ -141,6 +141,31 @@ components:
           type: array
           items:
             type: string
+    PreprocessingSummary:
+      type: object
+      required: [config_version, config_fingerprint, processed_text, changed, matched_rules]
+      properties:
+        config_version:
+          type: integer
+          const: 1
+        config_fingerprint:
+          type: string
+          description: 规范化后的有效配置SHA-256指纹。
+        processed_text:
+          type: string
+        changed:
+          type: boolean
+        matched_rules:
+          type: array
+          items:
+            type: object
+            required: [id, count]
+            properties:
+              id:
+                type: string
+              count:
+                type: integer
+                minimum: 0
     ParseResult:
       type: object
       required: [raw_text, extracted, evidence, schema_version, model_version, normalizer_version, status, link_status, warnings]
@@ -170,3 +195,6 @@ components:
           type: array
           items:
             type: string
+        preprocessing:
+          $ref: '#/components/schemas/PreprocessingSummary'
+          description: 仅在服务端启用名称预处理时返回。

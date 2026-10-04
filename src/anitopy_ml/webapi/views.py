@@ -90,7 +90,12 @@ def parse_view(request: HttpRequest) -> JsonResponse:
     def handle() -> JsonResponse:
         payload = _read_json(request)
         title = _title(payload.get("title"))
-        result = get_parser().parse(title)
+        parser = get_parser()
+        result = (
+            parser.parse(title, max_title_length=maximum_title_length())
+            if getattr(parser, "preprocessing_enabled", False)
+            else parser.parse(title)
+        )
         return _response({"result": result.model_dump()})
 
     return _handle(handle)
@@ -113,7 +118,16 @@ def parse_batch_view(request: HttpRequest) -> JsonResponse:
         for title in titles:
             if isinstance(title, str) and len(title) > maximum_title_length():
                 raise InputValidationError("titles中存在超过最大字符数的标题。")
-        results = get_parser().parse_batch(titles, on_error=on_error)
+        parser = get_parser()
+        results = (
+            parser.parse_batch(
+                titles,
+                on_error=on_error,
+                max_title_length=maximum_title_length(),
+            )
+            if getattr(parser, "preprocessing_enabled", False)
+            else parser.parse_batch(titles, on_error=on_error)
+        )
         serialized = [item.model_dump() if hasattr(item, "model_dump") else item for item in results]
         return _response({"results": serialized})
 

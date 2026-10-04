@@ -25,6 +25,8 @@ Anitopy-ML 是一个本地运行的多语言媒体标题语义解析工具。它
 - 识别发布组、发布版本、片源、分辨率、视频编码、位深、音频、字幕和文件扩展名。
 - 返回原文片段、Unicode 偏移、模型置信度、校准状态和中文警告。
 - 提供命令行、Python API 和本地模型验证页面。
+- 可用 UTF-8 TOML 配置顺序执行字符串/正则替换和屏蔽；屏蔽会删除命中片段并继续解析，默认关闭。
+- 结果集处理本期只预留透传入口，暂不执行过滤、排序或去重。
 - 使用模板自动生成字符级 BIO 训练数据，并按作品键隔离训练、验证和冻结测试分区。
 
 ## 安装
@@ -70,6 +72,18 @@ uv run anitopy-ml parse `
 ```
 
 输出为 JSON，核心字段位于 `extracted`，原文证据位于 `evidence`。集数使用规范化数值字符串，例如原文 `09` 对应 `"value": "9"`，发布版本则保留为 `v2`。
+
+### 名称预处理配置
+
+复制 [`configs/processing.example.toml`](configs/processing.example.toml) 为本地 `processing.toml`，将 `[preprocessing]` 中的 `enabled` 设为 `true`，按 `rules` 数组顺序调整替换和屏蔽规则。屏蔽会删除命中片段后继续解析；模型结果仍引用原始名称中的证据片段。
+
+```powershell
+uv run anitopy-ml processing validate --config processing.toml
+uv run anitopy-ml processing preview --config processing.toml --title "[广告]示例作品_第03集[转载:示例站].mkv"
+uv run anitopy-ml parse "[广告]示例作品_第03集[转载:示例站].mkv" --model artifacts/releases/anitopy-ml-v11 --processing-config processing.toml
+```
+
+`parse`、`batch` 也可从 `ANITOPY_PROCESSING_CONFIG` 环境变量加载配置；命令行参数优先。Python API 通过 `MediaParser.from_pretrained(..., processing_config="processing.toml")` 显式传入；HTTP 服务由同名环境变量控制。未配置时维持当前 V11 原始输入路径。启用配置后需重建 Python 解析器或重启服务，HTTP 请求不能自行提交处理规则。可选 `preprocessing` 摘要会报告配置指纹、处理后文本及规则命中数；任何处理后证据偏移仍指向输入原文。
 
 ### Python API
 

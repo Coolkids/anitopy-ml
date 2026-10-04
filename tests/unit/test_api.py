@@ -8,6 +8,7 @@ import torch
 
 from anitopy_ml.api import MediaParser
 from anitopy_ml.inference.character import CharacterTagger
+from anitopy_ml.processing.config import parse_processing_config
 from anitopy_ml.schemas import BIO_LABELS, ParseResult
 
 
@@ -35,3 +36,68 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(result.raw_text, "示例 S01E02")
         self.assertIsInstance(batch[0], ParseResult)
         self.assertEqual(batch[1]["status"], "error")
+
+    def _processing_parser(self, rules: list[dict[str, object]]) -> MediaParser:
+        config = parse_processing_config(
+            {
+                "config_version": 1,
+                "preprocessing": {"enabled": True, "rules": rules},
+            }
+        )
+        return MediaParser(
+            model=object(),
+            vocabulary=None,
+            tokenizer=object(),
+            labels=BIO_LABELS,
+            device="cpu",
+            model_version="测试模型",
+            processing_config=config,
+        )
+
+    def test_parse_preprocesses_once_and_restores_original_text(self) -> None:
+        parser = self._processing_parser(
+            [{"id": "rename", "type": "string_replace", "match": "_", "replacement": " "}]
+        )
+        fake_result = ParseResult(raw_text="示例 标题")
+        with (
+            patch.object(parser, "_infer_title", return_value=fake_result) as infer,
+            patch.object(parser._result_processor, "process", wraps=parser._result_processor.process) as process,
+        ):
+            result = parser.parse("示例_标题")
+
+        infer.assert_called_once_with("示例 标题", apply_calibration=False)
+        process.assert_called_once()
+        self.assertEqual(result.raw_text, "示例_标题")
+        self.assertEqual(result.preprocessing.processed_text, "示例 标题")
+        self.assertEqual(result.schema_version, "1.1")
+
+    def test_preprocessing_batch_preserves_errors_and_32_item_chunking(self) -> None:
+        parser = self._processing_parser(
+            [
+                {"id": "rename", "type": "string_replace", "match": "_", "replacement": " "},
+                {"id": "erase", "type": "string_mask", "match": "DROP"},
+            ]
+        )
+
+        def infer_batch(titles: list[str], *, apply_calibration: bool = True) -> list[ParseResult]:
+            self.assertFalse(apply_calibration)
+            return [ParseResult(raw_text=title) for title in titles]
+
+        titles = [f"title_{index}" for index in range(35)]
+        titles.insert(7, "DROP")
+        with (
+            patch.object(parser, "_parse_extractor_batch", side_effect=infer_batch) as infer,
+            patch.object(parser._result_processor, "process", wraps=parser._result_processor.process) as process,
+        ):
+            results = parser.parse_batch(titles, on_error="record")
+
+        self.assertEqual([call.args[0].__len__() for call in infer.call_args_list], [32, 3])
+        process.assert_called_once()
+        self.assertEqual(len(results), len(titles))
+        self.assertEqual(results[7]["status"], "error")
+        self.assertEqual(results[7]["raw_text"], "DROP")
+        for index, result in enumerate(results):
+            if index == 7:
+                continue
+            self.assertEqual(result.raw_text, titles[index])
+            self.assertEqual(result.preprocessing.processed_text, titles[index].replace("_", " "))

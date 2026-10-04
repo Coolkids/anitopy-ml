@@ -40,7 +40,7 @@ class CliTests(unittest.TestCase):
         output = io.StringIO()
         fake_parser = type("模拟解析器", (), {"parse": lambda _, title: ParseResult(raw_text=title)})()
         with (
-            patch("anitopy_ml.cli.MediaParser.from_pretrained", return_value=fake_parser) as load,
+            patch("anitopy_ml.api.MediaParser.from_pretrained", return_value=fake_parser) as load,
             redirect_stdout(output),
         ):
             exit_code = main(["parse", "示例标题", "--model", "模型目录"])

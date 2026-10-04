@@ -32,6 +32,7 @@ docker pull ghcr.io/coolkids/anitopy-ml:v0.1.0
 | `ANITOPY_MODEL_URL` | V11 GitHub Release 地址 | 待下载模型 ZIP 的地址 |
 | `ANITOPY_MODEL_UPDATE` | `missing` | 模型下载或更新策略 |
 | `ANITOPY_BASE_MODEL` | `FacebookAI/xlm-roberta-base` | 与模型权重匹配的基础编码器 |
+| `ANITOPY_PROCESSING_CONFIG` | 未设置 | 可选的只读 TOML 名称预处理配置路径，默认关闭 |
 | `HF_HOME` | `/opt/anitopy-ml/huggingface` | Hugging Face 持久化缓存目录 |
 
 模型 ZIP 解压后必须在根目录包含 `best_model.pt`、`checkpoint_metadata.json` 和 `tokenizer/`。下载会先写入临时目录，确认文件完整后才替换当前模型目录。
@@ -39,6 +40,8 @@ docker pull ghcr.io/coolkids/anitopy-ml:v0.1.0
 ## 使用 docker run
 
 以下命令创建两个具名卷，分别保存模型包和基础编码器缓存。服务仅绑定到本机回环地址：
+
+如需启用名称预处理，可把配置文件以只读方式挂载进容器，并设置 `ANITOPY_PROCESSING_CONFIG=/app/config/processing.toml`。修改规则后需要重新创建容器；结果集处理目前只预留透传入口。
 
 ```powershell
 docker volume create anitopy-ml-models

@@ -3,6 +3,9 @@
 MESSAGES = {
     "INPUT_EMPTY": "标题不能为空。",
     "INPUT_INVALID": "输入内容不符合要求。",
+    "PREPROCESSING_EMPTY": "名称预处理后为空，无法继续解析。",
+    "PREPROCESSING_LIMIT": "名称预处理结果超出允许长度。",
+    "PREPROCESSING_ZERO_WIDTH": "名称预处理规则产生了零宽匹配，已停止处理。",
     "SCHEMA_INVALID": "结构化数据不符合字段契约。",
     "CONFIG_INVALID": "配置无效或缺少必要配置。",
     "UNKNOWN_ERROR": "发生未预期错误，请查看调试信息。",

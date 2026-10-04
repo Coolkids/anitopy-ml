@@ -164,6 +164,7 @@ def main() -> None:
         help="本地模型目录，默认使用V9种子2。",
     )
     parser.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto", help="推理设备。")
+    parser.add_argument("--processing-config", help="可选的名称预处理TOML配置路径。")
     parser.add_argument("--host", default="127.0.0.1", help="监听地址，仅允许127.0.0.1。")
     parser.add_argument("--port", type=int, default=8765, help="监听端口。")
     arguments = parser.parse_args()
@@ -173,7 +174,15 @@ def main() -> None:
         parser.error("监听端口必须在1到65535之间。")
     model_path = Path(arguments.model)
     try:
-        parser_instance = MediaParser.from_pretrained(model_path, device=arguments.device)
+        parser_instance = (
+            MediaParser.from_pretrained(model_path, device=arguments.device)
+            if arguments.processing_config is None
+            else MediaParser.from_pretrained(
+                model_path,
+                device=arguments.device,
+                processing_config=arguments.processing_config,
+            )
+        )
     except AnitopyMlError as error:
         parser.error(str(error))
 

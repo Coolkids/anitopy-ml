@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 from anitopy_ml.errors import InputValidationError, SchemaValidationError
+from anitopy_ml.processing.types import ProcessingMetadata
 
 SpanLabel = Literal[
     "TITLE",
@@ -145,6 +146,7 @@ class ParseResult:
         "disabled", "matched", "ambiguous", "unmatched", "unavailable"
     ] = "disabled"
     warnings: list[str] = field(default_factory=list)
+    preprocessing: ProcessingMetadata | None = None
 
     def validate(self) -> None:
         """校验结果内部引用及输入标题。"""
@@ -158,7 +160,10 @@ class ParseResult:
     def model_dump(self) -> dict[str, Any]:
         """转换为仅由JSON兼容类型组成的字典。"""
         self.validate()
-        return asdict(self)
+        payload = asdict(self)
+        if self.preprocessing is None:
+            payload.pop("preprocessing")
+        return payload
 
 
 @dataclass(frozen=True, slots=True)

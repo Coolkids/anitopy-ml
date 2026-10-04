@@ -16,6 +16,15 @@ from anitopy_ml.inference.calibration import (
 from anitopy_ml.inference.decoding import build_parse_result
 from anitopy_ml.modeling.decoder import constrained_bio_decode
 from anitopy_ml.modeling.runtime import require_training_dependencies
+from anitopy_ml.processing import (
+    NoOpResultProcessor,
+    PreprocessingPipeline,
+    ProcessingConfig,
+    PreprocessingResult,
+    ResultProcessingContext,
+    resolve_processing_config,
+)
+from anitopy_ml.processing.evidence import project_result
 from anitopy_ml.schemas import BIO_LABELS, ParseResult
 
 
@@ -34,6 +43,7 @@ class MediaParser:
         character_boundary: bool = False,
         calibrator: ConfidenceCalibrator | None = None,
         acceptance_policy: AcceptancePolicy | None = None,
+        processing_config: ProcessingConfig | str | Path | None = None,
     ) -> None:
         self._model = model
         self._vocabulary = vocabulary
@@ -44,6 +54,8 @@ class MediaParser:
         self._character_boundary = character_boundary
         self._calibrator = calibrator
         self._acceptance_policy = acceptance_policy
+        self._preprocessing = PreprocessingPipeline(resolve_processing_config(processing_config))
+        self._result_processor = NoOpResultProcessor()
 
     @classmethod
     def from_pretrained(
@@ -53,13 +65,20 @@ class MediaParser:
         device: Literal["auto", "cpu", "cuda"] = "auto",
         offline: bool = True,
         use_calibration: bool = True,
+        processing_config: ProcessingConfig | str | Path | None = None,
     ) -> "MediaParser":
         """从本地字符或XLM-R检查点加载模型；当前不支持联网下载。"""
         if not offline:
             raise ConfigurationError("当前加载器只支持离线模型目录，不会联网下载模型。")
+        resolved_processing = resolve_processing_config(processing_config)
         directory = Path(model_dir)
         if directory.is_dir() and (directory / "best_model.pt").is_file():
-            return cls._load_extractor(directory, device=device, use_calibration=use_calibration)
+            return cls._load_extractor(
+                directory,
+                device=device,
+                use_calibration=use_calibration,
+                processing_config=resolved_processing,
+            )
         target = directory / "character_tagger.pt" if directory.is_dir() else directory
         if not target.is_file():
             raise ConfigurationError("未找到字符模型文件 character_tagger.pt。")
@@ -95,6 +114,7 @@ class MediaParser:
             labels=labels,
             device=selected_device,
             model_version="字符级连通性模型",
+            processing_config=resolved_processing,
         )
 
     @classmethod
@@ -104,6 +124,7 @@ class MediaParser:
         *,
         device: Literal["auto", "cpu", "cuda"],
         use_calibration: bool,
+        processing_config: ProcessingConfig,
     ) -> "MediaParser":
         """加载训练产物中的XLM-R权重和同目录分词器。"""
         from anitopy_ml.modeling.config import ExtractorModelConfig
@@ -159,14 +180,39 @@ class MediaParser:
             character_boundary=character_boundary,
             calibrator=calibrator,
             acceptance_policy=acceptance_policy,
+            processing_config=processing_config,
         )
 
-    def parse(self, title: str) -> ParseResult:
+    def parse(self, title: str, *, max_title_length: int | None = None) -> ParseResult:
         """离线解析单条标题并返回模型片段及确定性格式字段。"""
         if not isinstance(title, str) or not title.strip():
             raise InputValidationError("标题不能为空。")
+        if max_title_length is not None and len(title) > max_title_length:
+            from anitopy_ml.errors import PreprocessingError
+
+            raise PreprocessingError(
+                f"名称长度超过调用方上限{max_title_length}个字符。",
+                code="PREPROCESSING_LIMIT",
+            )
+        if not self._preprocessing.config.enabled:
+            result = self._infer_title(title, apply_calibration=True)
+            return self._process_result_set([result], "single")[0]
+        processed = self._preprocessing.apply(title, max_output_length=max_title_length)
+        result = self._infer_title(
+            processed.processed_text,
+            apply_calibration=not processed.changed,
+        )
+        result = project_result(result, processed)
+        return self._process_result_set([result], "single")[0]
+
+    def _infer_title(self, title: str, *, apply_calibration: bool) -> ParseResult:
+        """只推理一个已经完成名称处理的字符串。"""
         if self._tokenizer is not None:
-            return self._parse_extractor_batch([title])[0]
+            result = self._parse_extractor_batch(
+                [title],
+                apply_calibration=apply_calibration,
+            )[0]
+            return self._apply_acceptance_policy(result)
         torch, _ = require_training_dependencies()
         if self._vocabulary is None:
             raise ConfigurationError("字符模型词表缺失。")
@@ -192,7 +238,7 @@ class MediaParser:
             model_version=self._model_version,
         )
 
-    def _parse_extractor(self, title: str) -> ParseResult:
+    def _parse_extractor(self, title: str, *, apply_calibration: bool = True) -> ParseResult:
         """以XLM-R词元预测回填字符级BIO证据。"""
         torch, _ = require_training_dependencies()
         if self._tokenizer is None:
@@ -233,9 +279,13 @@ class MediaParser:
                     decoded,
                     confidences=confidences,
                     model_version=self._model_version,
-                    confidence_transform=self._calibrator.calibrate if self._calibrator else None,
+                    confidence_transform=(
+                        self._calibrator.calibrate
+                        if apply_calibration and self._calibrator
+                        else None
+                    ),
                 )
-                return self._apply_acceptance_policy(result)
+                return result
             logits = self._model(inputs, attention)["token_logits"][0]
             probabilities = torch.softmax(logits, dim=-1)
         active = [index for index, (start, end) in enumerate(offsets) if start != end]
@@ -257,18 +307,30 @@ class MediaParser:
             character_labels,
             confidences=confidences,
             model_version=self._model_version,
-            confidence_transform=self._calibrator.calibrate if self._calibrator else None,
+            confidence_transform=(
+                self._calibrator.calibrate
+                if apply_calibration and self._calibrator
+                else None
+            ),
         )
         if len(active) >= 254:
             result.warnings.append("标题超过当前XLM-R单窗口长度，尾部文本尚未参与模型预测。")
-        return self._apply_acceptance_policy(result)
+        return result
 
-    def _parse_extractor_batch(self, titles: Sequence[str]) -> list[ParseResult]:
+    def _parse_extractor_batch(
+        self,
+        titles: Sequence[str],
+        *,
+        apply_calibration: bool = True,
+    ) -> list[ParseResult]:
         """批量执行字符边界 XLM-R 推理，保留单条解析的原文证据语义。"""
         if not titles:
             return []
         if not self._character_boundary:
-            return [self._parse_extractor(title) for title in titles]
+            return [
+                self._parse_extractor(title, apply_calibration=apply_calibration)
+                for title in titles
+            ]
         torch, _ = require_training_dependencies()
         if self._tokenizer is None:
             raise ConfigurationError("XLM-R分词器缺失。")
@@ -326,9 +388,13 @@ class MediaParser:
                 decoded,
                 confidences=confidences,
                 model_version=self._model_version,
-                confidence_transform=self._calibrator.calibrate if self._calibrator else None,
+                confidence_transform=(
+                    self._calibrator.calibrate
+                    if apply_calibration and self._calibrator
+                    else None
+                ),
             )
-            results.append(self._apply_acceptance_policy(result))
+            results.append(result)
         return results
 
     def _apply_acceptance_policy(self, result: ParseResult) -> ParseResult:
@@ -355,6 +421,11 @@ class MediaParser:
         return self._acceptance_policy.decide(label, confidence, calibrated)
 
     @property
+    def preprocessing_enabled(self) -> bool:
+        """返回解析器是否启用了显式名称预处理配置。"""
+        return self._preprocessing.config.enabled
+
+    @property
     def model_version(self) -> str:
         """返回当前加载模型的稳定版本说明。"""
         return self._model_version
@@ -364,33 +435,73 @@ class MediaParser:
         titles: Sequence[str],
         *,
         on_error: Literal["raise", "record"] = "record",
+        max_title_length: int | None = None,
     ) -> list[ParseResult | dict[str, object]]:
         """按输入顺序解析，选择记录错误时不会中断其余标题。"""
         if on_error not in {"raise", "record"}:
             raise ConfigurationError("批量错误策略只能是raise或record。")
-        if self._tokenizer is not None:
-            results: list[ParseResult | dict[str, object] | None] = [None] * len(titles)
-            valid: list[tuple[int, str]] = []
-            for index, title in enumerate(titles):
-                if isinstance(title, str) and title.strip():
-                    valid.append((index, title))
-                    continue
-                error = InputValidationError("标题不能为空。")
-                if on_error == "raise":
-                    raise error
-                results[index] = {"raw_text": title, "status": "error", "warnings": [str(error)]}
-            for offset in range(0, len(valid), 32):
-                batch = valid[offset : offset + 32]
-                parsed = self._parse_extractor_batch([title for _, title in batch])
-                for (index, _), result in zip(batch, parsed, strict=True):
-                    results[index] = result
-            return [result for result in results if result is not None]
-        results: list[ParseResult | dict[str, object]] = []
-        for title in titles:
+        results: list[ParseResult | dict[str, object] | None] = [None] * len(titles)
+        valid: list[tuple[int, str, PreprocessingResult]] = []
+        for index, title in enumerate(titles):
             try:
-                results.append(self.parse(title))
-            except (ConfigurationError, InputValidationError) as error:
+                if not isinstance(title, str) or not title.strip():
+                    raise InputValidationError("标题不能为空。")
+                preprocessing = self._preprocessing.apply(
+                    title,
+                    max_output_length=max_title_length,
+                )
+                valid.append((index, preprocessing.processed_text, preprocessing))
+            except InputValidationError as error:
                 if on_error == "raise":
                     raise
-                results.append({"raw_text": title, "status": "error", "warnings": [str(error)]})
-        return results
+                results[index] = {"raw_text": title, "status": "error", "warnings": [str(error)]}
+
+        for offset in range(0, len(valid), 32):
+            batch = valid[offset : offset + 32]
+            if self._tokenizer is not None:
+                parsed_by_index: dict[int, ParseResult] = {}
+                for apply_calibration in (True, False):
+                    selected = [
+                        item
+                        for item in batch
+                        if item[2].changed is (not apply_calibration)
+                    ]
+                    if not selected:
+                        continue
+                    selected_results = self._parse_extractor_batch(
+                        [title for _, title, _ in selected],
+                        apply_calibration=apply_calibration,
+                    )
+                    parsed_by_index.update(
+                        (item[0], result)
+                        for item, result in zip(selected, selected_results, strict=True)
+                    )
+                parsed = [parsed_by_index[index] for index, _, _ in batch]
+            else:
+                parsed = [
+                    self._infer_title(
+                        title,
+                        apply_calibration=not preprocessing.changed,
+                    )
+                    for _, title, preprocessing in batch
+                ]
+            for (index, _, preprocessing), result in zip(batch, parsed, strict=True):
+                result = self._apply_acceptance_policy(result)
+                if self._preprocessing.config.enabled:
+                    result = project_result(result, preprocessing)
+                results[index] = result
+
+        resolved = [result for result in results if result is not None]
+        return list(self._process_result_set(resolved, "batch"))
+
+    def _process_result_set(
+        self,
+        items: Sequence[ParseResult | dict[str, object]],
+        mode: Literal["single", "batch"],
+    ) -> Sequence[ParseResult | dict[str, object]]:
+        """在恢复原始顺序后通过预留的结果集处理入口。"""
+        context = ResultProcessingContext(
+            mode=mode,
+            config_fingerprint=self._preprocessing.config.fingerprint,
+        )
+        return self._result_processor.process(items, context)

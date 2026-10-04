@@ -26,6 +26,12 @@ def configured_device() -> str:
     return device
 
 
+def configured_processing_config() -> Path | None:
+    """读取服务端统一名称处理配置路径；未设置时保持第一版行为。"""
+    raw_value = os.environ.get("ANITOPY_PROCESSING_CONFIG", "").strip()
+    return Path(raw_value) if raw_value else None
+
+
 def maximum_batch_size() -> int:
     """读取批量请求上限，避免单个请求耗尽本地资源。"""
     raw_value = os.environ.get("ANITOPY_MAX_BATCH_SIZE", "100")
@@ -60,7 +66,16 @@ def get_parser() -> MediaParser:
             directory = configured_model_directory()
             if not directory.is_dir():
                 raise ConfigurationError(f"模型目录不存在：{directory}。")
-            _PARSER = MediaParser.from_pretrained(directory, device=configured_device())
+            processing_config = configured_processing_config()
+            _PARSER = (
+                MediaParser.from_pretrained(directory, device=configured_device())
+                if processing_config is None
+                else MediaParser.from_pretrained(
+                    directory,
+                    device=configured_device(),
+                    processing_config=processing_config,
+                )
+            )
     return _PARSER
 
 

@@ -6,6 +6,7 @@ import argparse
 import csv
 import importlib.util
 import json
+import os
 import platform
 import sys
 from pathlib import Path
@@ -22,7 +23,6 @@ from anitopy_ml.annotation.export import (
 )
 from anitopy_ml.annotation.review import review_sample
 from anitopy_ml.annotation.store import AnnotationStore
-from anitopy_ml.api import MediaParser
 from anitopy_ml.data.baseline import read_jsonl_records, write_legacy_baseline
 from anitopy_ml.data.grouping import (
     build_group_assignments,
@@ -181,6 +181,28 @@ def build_parser() -> argparse.ArgumentParser:
     batch.add_argument("--output", required=True, help="JSONL结果输出路径。")
     batch.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto", help="推理设备。")
     batch.add_argument("--on-error", choices=("raise", "record"), default="record", help="单条错误处理策略。")
+    parse_command.add_argument(
+        "--processing-config",
+        help="名称预处理TOML路径；省略时使用ANITOPY_PROCESSING_CONFIG或关闭配置。",
+    )
+    batch.add_argument(
+        "--processing-config",
+        help="名称预处理TOML路径；省略时使用ANITOPY_PROCESSING_CONFIG或关闭配置。",
+    )
+
+    processing = subparsers.add_parser("processing", help="校验或预览名称预处理配置。")
+    processing_commands = processing.add_subparsers(dest="processing_command", title="名称处理命令")
+    processing_validate = processing_commands.add_parser(
+        "validate",
+        help="校验TOML配置，不加载模型。",
+    )
+    processing_validate.add_argument("--config", required=True, help="名称处理TOML配置路径。")
+    processing_preview = processing_commands.add_parser(
+        "preview",
+        help="逐步预览配置对单个名称的处理结果，不加载模型。",
+    )
+    processing_preview.add_argument("--config", required=True, help="名称处理TOML配置路径。")
+    processing_preview.add_argument("--title", required=True, help="待预览的媒体名称。")
     return parser
 
 
@@ -226,6 +248,49 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     arguments = parser.parse_args(argv)
     try:
+        if arguments.command == "processing" and arguments.processing_command == "validate":
+            from anitopy_ml.processing import inspect_processing_config
+
+            report = inspect_processing_config(arguments.config)
+            config = report.config
+            print(
+                "预处理配置有效："
+                f"版本={config.config_version}，"
+                f"预处理={'启用' if config.enabled else '关闭'}，"
+                f"规则数={len(config.rules)}，"
+                f"指纹={config.fingerprint}。"
+            )
+            print("结果集处理入口处于透传状态。")
+            return 0
+        if arguments.command == "processing" and arguments.processing_command == "preview":
+            from anitopy_ml.processing import PreprocessingPipeline, load_processing_config
+
+            result = PreprocessingPipeline(load_processing_config(arguments.config)).apply(
+                arguments.title,
+                trace=True,
+            )
+            print(
+                json.dumps(
+                    {
+                        "原始名称": result.raw_text,
+                        "处理后名称": result.processed_text,
+                        "是否改变": result.changed,
+                        "配置指纹": result.config_fingerprint,
+                        "规则步骤": [
+                            {
+                                "规则": step.id,
+                                "命中数": step.matched,
+                                "处理前": step.before,
+                                "处理后": step.after,
+                            }
+                            for step in result.steps
+                        ],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return 0
         if arguments.command == "doctor":
             report = collect_doctor_report()
             if arguments.json:
@@ -517,16 +582,39 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 0
         if arguments.command == "parse":
-            result = MediaParser.from_pretrained(arguments.model, device=arguments.device).parse(arguments.title)
+            from anitopy_ml.api import MediaParser
+
+            config_path = arguments.processing_config or os.environ.get("ANITOPY_PROCESSING_CONFIG")
+            parser_instance = (
+                MediaParser.from_pretrained(arguments.model, device=arguments.device)
+                if not config_path
+                else MediaParser.from_pretrained(
+                    arguments.model,
+                    device=arguments.device,
+                    processing_config=config_path,
+                )
+            )
+            result = parser_instance.parse(arguments.title)
             print(json.dumps(result.model_dump(), ensure_ascii=False, indent=2))
             return 0
         if arguments.command == "batch":
+            from anitopy_ml.api import MediaParser
+
             with Path(arguments.input).open(encoding="utf-8", newline="") as stream:
                 reader = csv.DictReader(stream)
                 if not reader.fieldnames or arguments.column not in reader.fieldnames:
                     raise InputValidationError(f"输入CSV缺少标题列：{arguments.column}。")
                 titles = [str(row.get(arguments.column, "")) for row in reader]
-            parser_instance = MediaParser.from_pretrained(arguments.model, device=arguments.device)
+            config_path = arguments.processing_config or os.environ.get("ANITOPY_PROCESSING_CONFIG")
+            parser_instance = (
+                MediaParser.from_pretrained(arguments.model, device=arguments.device)
+                if not config_path
+                else MediaParser.from_pretrained(
+                    arguments.model,
+                    device=arguments.device,
+                    processing_config=config_path,
+                )
+            )
             results = parser_instance.parse_batch(titles, on_error=arguments.on_error)
             target = Path(arguments.output)
             target.parent.mkdir(parents=True, exist_ok=True)

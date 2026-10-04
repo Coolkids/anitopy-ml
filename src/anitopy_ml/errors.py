@@ -13,6 +13,22 @@ class InputValidationError(AnitopyMlError):
     code = "INPUT_INVALID"
 
 
+class PreprocessingError(InputValidationError):
+    """标题预处理失败并保留稳定业务错误码。"""
+
+    VALID_CODES = {
+        "PREPROCESSING_EMPTY",
+        "PREPROCESSING_LIMIT",
+        "PREPROCESSING_ZERO_WIDTH",
+    }
+
+    def __init__(self, message: str, *, code: str) -> None:
+        if code not in self.VALID_CODES:
+            raise ValueError("未知预处理错误码。")
+        super().__init__(message)
+        self.code = code
+
+
 class SchemaValidationError(AnitopyMlError):
     """结构化数据不符合数据契约。"""
 

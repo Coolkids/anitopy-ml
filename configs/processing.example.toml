@@ -1,0 +1,72 @@
+# 媒体名称处理示例配置（UTF-8 TOML）。复制此文件后按注释修改。
+# config_version：配置格式版本；当前只支持整数 1，与软件和模型版本无关。
+config_version = 1
+
+[preprocessing]
+# enabled：是否启用名称预处理，布尔值 true/false。默认 false，便于先检查配置。
+enabled = false
+# max_output_length：输入及每条规则处理后的名称长度上限，单位为 Unicode 字符。
+# 允许 1–16384。HTTP 服务还会另外采用 ANITOPY_MAX_TITLE_LENGTH 与此值中的较小值。
+max_output_length = 16384
+
+# rules 是有序数组：严格按文件中的先后顺序执行；规则数量最多 100 条。
+# 每条规则都有 id、enabled、type 和可选 count：
+#   id：必填、非空且唯一，最长 128 字符；仅用于定位规则和输出命中摘要。
+#   enabled：true 执行、false 跳过；默认 true。关闭总开关也会校验所有规则。
+#   type：必填，可选 string_replace、regex_replace、string_mask、regex_mask。
+#   count：0 表示替换全部命中；正整数表示最多替换的次数；默认 0。
+#         匹配不重叠，按名称从左至右处理；新替换出的文本不会被同一规则再次扫描。
+# 字符串规则（string_*）使用 match，正则规则（regex_*）使用 pattern 和 flags。
+# 替换规则（*_replace）必须填写 replacement；屏蔽规则（*_mask）删除命中片段，不填 replacement。
+
+[[preprocessing.rules]]
+# 规则一：字符串替换。字符串按原样精确匹配，区分大小写；点号等字符没有正则含义。
+id = "normalize_separator"
+enabled = true
+type = "string_replace"
+# match 必须非空，最多 1024 字符；允许空格等字符。
+match = "_"
+# replacement 是字面文本，可为空；最多 4096 字符。此处将下划线替换为空格。
+replacement = " "
+# count = 0 表示替换每个命中的下划线；设为 1 则只替换第一个。
+count = 0
+
+[[preprocessing.rules]]
+# 规则二：正则替换。pattern 使用 Python re 语法，最多 1024 字符，不能匹配空字符串。
+id = "normalize_episode"
+enabled = true
+type = "regex_replace"
+# 命名捕获组 episode 匹配“第”和“集”之间的一位或多位数字。
+pattern = '第(?P<episode>\d+)集'
+# replacement 可写普通文字、\g<组名>、\g<组号>；用 \g<...> 引用捕获组。
+# 只支持 \g<...> 组引用和 \\ 字面反斜杠，不执行代码或函数。
+replacement = 'E\g<episode>'
+# flags 可选值：IGNORECASE 忽略大小写；MULTILINE 改变 ^/$ 的逐行行为；
+# DOTALL 令 . 匹配换行；ASCII 令字符类按 ASCII 规则匹配。可组合且不能重复。
+# 本规则为空数组，即不额外设置选项。大小写敏感是 Python re 默认行为。
+flags = []
+count = 0
+
+[[preprocessing.rules]]
+# 规则三：字符串屏蔽。删除每个精确命中的片段，然后继续处理余下名称。
+id = "remove_advertisement"
+enabled = true
+type = "string_mask"
+match = "[广告]"
+count = 0
+
+[[preprocessing.rules]]
+# 规则四：正则屏蔽。flags 中的 IGNORECASE 使转载标记匹配时忽略英文字母大小写。
+id = "remove_repost_marker"
+enabled = true
+type = "regex_mask"
+# 匹配形如 [转载:站点名称] 的片段；反斜杠转义方括号以表示字面括号。
+pattern = '\[转载:[^\]]+\]'
+flags = ["IGNORECASE"]
+count = 0
+
+[result_processing]
+# 结果集处理本版本仅预留透传入口。enabled 必须为 false、rules 必须为空数组。
+# 当前可选值只有 false 和 []；设为 true 或添加规则会在加载配置时明确报错。
+enabled = false
+rules = []

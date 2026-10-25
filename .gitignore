@@ -21,5 +21,6 @@ configs/authorization.yaml
 .idea/
 .vscode/
 
+tests/
 plan.md
 task.md

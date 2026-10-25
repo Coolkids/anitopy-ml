@@ -584,6 +584,13 @@
         "バンドリ！ ゆめ∞みた"
       ],
       "title_en":"BanG Dream Yumemita"
+    },
+    {
+      "title": "魔法★探险家",
+      "title_alias": [
+        "Magical Explorer"
+      ],
+      "title_en":"Magical Explorer"
     }
   ],
   "episode_expr": [
@@ -671,12 +678,16 @@
         "name":
         [
             "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode][$noise]",
             "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
         "title_alias_separator":" ",
-        "title_alias_begin":" "
+        "title_alias_begin":" ",
+        "noise":[
+          "Fin"
+        ]
     },
     {
         "name":

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import sys
 import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -136,18 +137,25 @@ def _compile_rule(value: object, index: int, identifiers: set[str]) -> Processin
     is_replace = kind.endswith("replace")
     allowed = {"id", "enabled", "type", "count"}
     allowed.add("pattern" if is_regex else "match")
+    if kind == "string_mask":
+        allowed.add("matchs")
     if is_replace:
         allowed.add("replacement")
     if is_regex:
         allowed.add("flags")
     required = {"id", "type", "pattern" if is_regex else "match"}
+    if kind == "string_mask":
+        required.discard("match")
     if is_replace:
         required.add("replacement")
     _keys(table, allowed, required, location)
+    if kind == "string_mask" and ("match" in table) == ("matchs" in table):
+        raise _fail(location, "必须且只能填写 match 或 matchs 中的一项。")
 
     enabled = _boolean(table.get("enabled", True), f"{location}.enabled")
     count = _integer(table.get("count", 0), f"{location}.count", 0, 1_000_000)
     match = None
+    matchs: tuple[str, ...] = ()
     pattern_text = None
     compiled = None
     tokens: tuple[ReplacementToken, ...] = ()
@@ -173,6 +181,14 @@ def _compile_rule(value: object, index: int, identifiers: set[str]) -> Processin
         empty = compiled.match("")
         if empty is not None and empty.start() == empty.end():
             raise _fail(f"{location}.pattern", "不能匹配空字符串。")
+    elif kind == "string_mask" and "matchs" in table:
+        raw_matchs = table["matchs"]
+        if not isinstance(raw_matchs, list) or not raw_matchs:
+            raise _fail(f"{location}.matchs", "必须是非空字符串数组。")
+        matchs = tuple(
+            _bounded_text(item, f"{location}.matchs[{item_index}]", 1024, nonempty=True)
+            for item_index, item in enumerate(raw_matchs)
+        )
     else:
         match = _bounded_text(table.get("match"), f"{location}.match", 1024, nonempty=True)
 
@@ -187,6 +203,7 @@ def _compile_rule(value: object, index: int, identifiers: set[str]) -> Processin
         enabled=enabled,
         type=kind,
         match=match,
+        matchs=matchs,
         pattern_text=pattern_text,
         pattern=compiled,
         replacement=replacement,
@@ -283,3 +300,15 @@ def resolve_processing_config(
 def inspect_processing_config(path: str | Path) -> ConfigurationReport:
     """加载并返回可供命令行展示的配置检查报告。"""
     return ConfigurationReport(config=load_processing_config(path))
+
+
+def load_startup_processing_config(path: str | Path | None) -> ProcessingConfig:
+    """启动时校验名称处理配置，并向标准错误输出实际加载状态。"""
+    config = resolve_processing_config(path)
+    message = (
+        f"已加载配置文件：{config.source_path}"
+        if config.source_path is not None
+        else "无配置文件加载"
+    )
+    print(message, file=sys.stderr, flush=True)
+    return config

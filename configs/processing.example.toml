@@ -16,7 +16,8 @@ max_output_length = 16384
 #   type：必填，可选 string_replace、regex_replace、string_mask、regex_mask。
 #   count：0 表示替换全部命中；正整数表示最多替换的次数；默认 0。
 #         匹配不重叠，按名称从左至右处理；新替换出的文本不会被同一规则再次扫描。
-# 字符串规则（string_*）使用 match，正则规则（regex_*）使用 pattern 和 flags。
+# 字符串规则（string_*）使用 match；string_mask 也可改用 matchs 列表。
+# 正则规则（regex_*）使用 pattern 和 flags。
 # 替换规则（*_replace）必须填写 replacement；屏蔽规则（*_mask）删除命中片段，不填 replacement。
 
 [[preprocessing.rules]]
@@ -52,7 +53,10 @@ count = 0
 id = "remove_advertisement"
 enabled = true
 type = "string_mask"
-match = "[广告]"
+# match 与 matchs 必须二选一；单字符串仍可写为 match = "[广告]"。
+# matchs 必须为非空字符串列表，每项非空且最多 1024 字符，按列表顺序屏蔽。
+# 每项在上一项删除后的文本上匹配；count 对列表中的每项分别生效。
+matchs = ["[广告]", "[推广]"]
 count = 0
 
 [[preprocessing.rules]]

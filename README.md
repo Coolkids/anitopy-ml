@@ -77,6 +77,8 @@ uv run anitopy-ml parse `
 
 复制 [`configs/processing.example.toml`](configs/processing.example.toml) 为本地 `processing.toml`，将 `[preprocessing]` 中的 `enabled` 设为 `true`，按 `rules` 数组顺序调整替换和屏蔽规则。屏蔽会删除命中片段后继续解析；模型结果仍引用原始名称中的证据片段。
 
+`string_mask` 支持单个 `match = "[广告]"`，或字符串列表 `matchs = ["[广告]", "[推广]"]`，两者必须二选一。列表不能为空，每项必须为非空字符串且不超过 1024 字符；按列表顺序在上一项处理后的文本上继续屏蔽，`count` 对每项分别生效。`parse`、`batch` 和 HTTP 服务启动时会向标准错误输出已加载配置文件的绝对路径；未指定配置时显示“无配置文件加载”。
+
 ```powershell
 uv run anitopy-ml processing validate --config processing.toml
 uv run anitopy-ml processing preview --config processing.toml --title "[广告]示例作品_第03集[转载:示例站].mkv"

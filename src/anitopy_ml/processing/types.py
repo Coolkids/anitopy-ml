@@ -35,6 +35,7 @@ class ProcessingRule:
     replacement: str | None = None
     replacement_tokens: tuple[ReplacementToken, ...] = ()
     count: int = 0
+    matchs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +71,7 @@ class ProcessingConfig:
                         "enabled": rule.enabled,
                         "type": rule.type,
                         "match": rule.match,
+                        **({"matchs": rule.matchs} if rule.matchs else {}),
                         "pattern": rule.pattern_text,
                         "replacement": rule.replacement,
                         "flags": sorted(

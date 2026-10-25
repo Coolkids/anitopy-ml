@@ -8,4 +8,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "anitopy_ml.webapi.settings")
 
 from django.core.wsgi import get_wsgi_application
 
+from anitopy_ml.webapi.service import startup_processing_config
+
 application = get_wsgi_application()
+startup_processing_config()

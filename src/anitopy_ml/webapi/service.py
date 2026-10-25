@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import os
 import threading
+from functools import cache
 from pathlib import Path
 
 from anitopy_ml.api import MediaParser
 from anitopy_ml.errors import ConfigurationError
+from anitopy_ml.processing.config import load_startup_processing_config
+from anitopy_ml.processing.types import ProcessingConfig
 
 _PARSER: MediaParser | None = None
 _LOCK = threading.Lock()
@@ -30,6 +33,12 @@ def configured_processing_config() -> Path | None:
     """读取服务端统一名称处理配置路径；未设置时保持第一版行为。"""
     raw_value = os.environ.get("ANITOPY_PROCESSING_CONFIG", "").strip()
     return Path(raw_value) if raw_value else None
+
+
+@cache
+def startup_processing_config() -> ProcessingConfig:
+    """启动时加载并记录配置，供进程内的懒加载解析器复用。"""
+    return load_startup_processing_config(configured_processing_config())
 
 
 def maximum_batch_size() -> int:
@@ -66,10 +75,10 @@ def get_parser() -> MediaParser:
             directory = configured_model_directory()
             if not directory.is_dir():
                 raise ConfigurationError(f"模型目录不存在：{directory}。")
-            processing_config = configured_processing_config()
+            processing_config = startup_processing_config()
             _PARSER = (
                 MediaParser.from_pretrained(directory, device=configured_device())
-                if processing_config is None
+                if processing_config.source_path is None
                 else MediaParser.from_pretrained(
                     directory,
                     device=configured_device(),
@@ -84,3 +93,4 @@ def reset_parser_for_testing() -> None:
     global _PARSER
     with _LOCK:
         _PARSER = None
+        startup_processing_config.cache_clear()

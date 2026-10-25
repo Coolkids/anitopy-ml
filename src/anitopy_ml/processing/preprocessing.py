@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from anitopy_ml.errors import PreprocessingError
@@ -67,20 +68,29 @@ class PreprocessingPipeline:
             if not rule.enabled:
                 continue
             before = state.text
-            edits = edits_for_rule(rule, before)
-            resulting_length = len(before) + sum(
-                len(edit.replacement) - (edit.end - edit.start)
-                for edit in edits
+            # 列表中的每项独立执行一次，后续项基于删除后的文本继续匹配。
+            passes = (
+                (replace(rule, match=match, matchs=()) for match in rule.matchs)
+                if rule.type == "string_mask" and rule.matchs
+                else (rule,)
             )
-            if resulting_length > limit:
-                raise PreprocessingError(
-                    f"规则{rule.id}的处理结果超过预处理上限{limit}个字符。",
-                    code="PREPROCESSING_LIMIT",
+            matched = 0
+            for current_rule in passes:
+                edits = edits_for_rule(current_rule, state.text)
+                resulting_length = len(state.text) + sum(
+                    len(edit.replacement) - (edit.end - edit.start)
+                    for edit in edits
                 )
-            state = apply_edits(state, edits)
-            matched_rules.append(RuleMatchSummary(rule.id, len(edits)))
+                if resulting_length > limit:
+                    raise PreprocessingError(
+                        f"规则{rule.id}的处理结果超过预处理上限{limit}个字符。",
+                        code="PREPROCESSING_LIMIT",
+                    )
+                state = apply_edits(state, edits)
+                matched += len(edits)
+            matched_rules.append(RuleMatchSummary(rule.id, matched))
             if trace:
-                steps.append(ProcessingStep(rule.id, before, state.text, len(edits)))
+                steps.append(ProcessingStep(rule.id, before, state.text, matched))
 
         if not state.text.strip():
             raise PreprocessingError(

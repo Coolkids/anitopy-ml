@@ -583,15 +583,17 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if arguments.command == "parse":
             from anitopy_ml.api import MediaParser
+            from anitopy_ml.processing.config import load_startup_processing_config
 
-            config_path = arguments.processing_config or os.environ.get("ANITOPY_PROCESSING_CONFIG")
+            config_path = arguments.processing_config or os.environ.get("ANITOPY_PROCESSING_CONFIG", "").strip() or None
+            processing_config = load_startup_processing_config(config_path)
             parser_instance = (
                 MediaParser.from_pretrained(arguments.model, device=arguments.device)
                 if not config_path
                 else MediaParser.from_pretrained(
                     arguments.model,
                     device=arguments.device,
-                    processing_config=config_path,
+                    processing_config=processing_config,
                 )
             )
             result = parser_instance.parse(arguments.title)
@@ -599,20 +601,22 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if arguments.command == "batch":
             from anitopy_ml.api import MediaParser
+            from anitopy_ml.processing.config import load_startup_processing_config
 
             with Path(arguments.input).open(encoding="utf-8", newline="") as stream:
                 reader = csv.DictReader(stream)
                 if not reader.fieldnames or arguments.column not in reader.fieldnames:
                     raise InputValidationError(f"输入CSV缺少标题列：{arguments.column}。")
                 titles = [str(row.get(arguments.column, "")) for row in reader]
-            config_path = arguments.processing_config or os.environ.get("ANITOPY_PROCESSING_CONFIG")
+            config_path = arguments.processing_config or os.environ.get("ANITOPY_PROCESSING_CONFIG", "").strip() or None
+            processing_config = load_startup_processing_config(config_path)
             parser_instance = (
                 MediaParser.from_pretrained(arguments.model, device=arguments.device)
                 if not config_path
                 else MediaParser.from_pretrained(
                     arguments.model,
                     device=arguments.device,
-                    processing_config=config_path,
+                    processing_config=processing_config,
                 )
             )
             results = parser_instance.parse_batch(titles, on_error=arguments.on_error)

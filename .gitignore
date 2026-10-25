@@ -24,3 +24,4 @@ configs/authorization.yaml
 tests/
 plan.md
 task.md
+AGENTS.md

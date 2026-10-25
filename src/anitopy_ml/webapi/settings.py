@@ -12,6 +12,7 @@ ALLOWED_HOSTS = [
     if item.strip()
 ]
 ROOT_URLCONF = "anitopy_ml.webapi.urls"
+WSGI_APPLICATION = "anitopy_ml.webapi.wsgi.application"
 MIDDLEWARE: list[str] = []
 INSTALLED_APPS: list[str] = []
 TEMPLATES: list[dict[str, object]] = []

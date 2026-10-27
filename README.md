@@ -177,6 +177,7 @@ uv run python -m unittest discover -s tests/unit -p "test_*.py"
 
 - [开发环境](docs/开发环境.md)
 - [训练数据导出](docs/训练数据导出.md)
+- [大数据分步训练](docs/大数据分步训练.md)
 - [调用指南](docs/调用指南.md)
 - [字段契约](docs/字段契约.md)
 - [模型验证页面](docs/模型验证页面.md)

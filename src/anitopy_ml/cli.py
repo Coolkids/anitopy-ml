@@ -90,6 +90,14 @@ def build_parser() -> argparse.ArgumentParser:
     synthetic.add_argument("--seed", type=int, default=20260918, help="随机种子。")
     synthetic.add_argument("--optional-rate", type=float, default=1.0, help="&可选字段的填充比例，默认全部填充。")
     synthetic.add_argument("--season-rate", type=float, default=0.7, help="含season_expr标题的抽样比例，默认0.7。")
+    large_synthetic = data_commands.add_parser("prepare-synthetic", help="低内存生成、磁盘去重、BIO审计及作品隔离全模板覆盖划分。")
+    large_synthetic.add_argument("--input", required=True, help="模板数据JSON路径。")
+    large_synthetic.add_argument("--output-dir", required=True, help="新的空分区目录。")
+    large_synthetic.add_argument("--count", type=int, default=1000000, help="原始样本数量，默认100万。")
+    large_synthetic.add_argument("--seed", type=int, default=20261025, help="生成随机种子。")
+    large_synthetic.add_argument("--split-seed", type=int, default=20261025, help="作品分区种子；生成批次之间必须保持一致。")
+    large_synthetic.add_argument("--optional-rate", type=float, default=1.0, help="可选字段填充比例。")
+    large_synthetic.add_argument("--season-rate", type=float, default=0.7, help="含季数标题的抽样比例。")
     split_synthetic = data_commands.add_parser("split-synthetic", help="按主标题隔离模板训练、验证和测试数据。")
     split_synthetic.add_argument("--input", required=True, help="模板训练JSONL路径。")
     split_synthetic.add_argument("--output-dir", required=True, help="三个分区及清单输出目录。")
@@ -143,6 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
     extractor.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto", help="训练设备。")
     extractor.add_argument("--augment-whitespace", action="store_true", help="仅对训练分区追加空白增强样本。")
     extractor.add_argument("--init-model", help="仅加载兼容旧检查点权重，并以新数据重新开始优化。")
+    extractor.add_argument("--resume", action="store_true", help="从当前输出目录恢复模型、优化器、混合精度和轮内进度。")
+    extractor.add_argument("--max-steps", type=int, help="本次最多执行的优化器步数；到达后保存并暂停。")
+    extractor.add_argument("--checkpoint-steps", type=int, default=1000, help="每隔多少个优化器步保存检查点。")
+    extractor.add_argument("--shuffle-buffer-size", type=int, default=1024, help="流式洗牌的最大样本缓冲数。")
+    extractor.add_argument("--gradient-checkpointing", action="store_true", help="重算编码器激活以减少显存占用。")
     extractor.add_argument("--seed", type=int, default=20260918, help="训练随机种子。")
     compare_runs = train_commands.add_parser("compare-runs", help="汇总固定配置下的多随机种子实验。")
     compare_runs.add_argument("--runs", nargs="+", required=True, help="各训练输出目录。")
@@ -367,6 +380,17 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(f"疑似同组复核队列已生成：{count} 个候选簇。")
             return 0
+        if arguments.command == "data" and arguments.data_command == "prepare-synthetic":
+            from anitopy_ml.data.large_synthetic import prepare_large_synthetic
+
+            manifest = prepare_large_synthetic(
+                arguments.input, arguments.output_dir, count=arguments.count,
+                seed=arguments.seed, split_seed=arguments.split_seed,
+                optional_rate=arguments.optional_rate, season_rate=arguments.season_rate,
+            )
+            counts = {name: item["样本数"] for name, item in manifest["分区"].items()}
+            print(f"大数据准备完成：分区样本数{counts}，覆盖{manifest['模板条目数']}个模板条目；清单已写入{arguments.output_dir}。")
+            return 0
         if arguments.command == "data" and arguments.data_command == "generate-synthetic":
             records = generate_synthetic_records(
                 load_template_data(arguments.input),
@@ -504,12 +528,15 @@ def main(argv: list[str] | None = None) -> int:
                 augment_whitespace=arguments.augment_whitespace,
                 initial_model_dir=arguments.init_model,
                 seed=arguments.seed,
+                resume=arguments.resume,
+                max_steps=arguments.max_steps,
+                checkpoint_steps=arguments.checkpoint_steps,
+                shuffle_buffer_size=arguments.shuffle_buffer_size,
+                gradient_checkpointing=arguments.gradient_checkpointing,
             )
-            print(
-                "XLM-R抽取训练完成："
-                f"最佳验证实体F1为 {report['最佳验证实体F1']:.4f}，"
-                f"报告已写入 {arguments.output_dir}。"
-            )
+            score = report["最佳验证实体F1"]
+            summary = f"最佳验证实体F1为{score:.4f}" if score is not None else "尚未完成整轮验证"
+            print(f"XLM-R抽取{report['状态']}：{summary}，报告已写入 {arguments.output_dir}。")
             return 0
         if arguments.command == "train" and arguments.train_command == "compare-runs":
             from anitopy_ml.training.experiments import write_repeated_runs_summary

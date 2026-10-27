@@ -333,6 +333,12 @@
       "season_expr": ["2"]
     },
     {
+      "title": "赛博朋克：边缘行者 2",
+      "title_alias": ["Cyberpunk - Edgerunners 2"],
+      "title_en":"Cyberpunk - Edgerunners 2",
+      "season_expr": ["2"]
+    },
+    {
       "title": "彻夜之歌 第二季",
       "title_alias": ["Yofukashi no Uta S2"],
       "title_en":"Yofukashi no Uta S2",
@@ -591,6 +597,13 @@
         "Magical Explorer"
       ],
       "title_en":"Magical Explorer"
+    },
+    {
+      "title": "用【循环利息】强制收回借出的魔力",
+      "title_alias": [
+        "Kashita Maryoku wa Revo Barai de Kyousei Choushuu"
+      ],
+      "title_en":"Kashita Maryoku wa Revo Barai de Kyousei Choushuu"
     }
   ],
   "episode_expr": [
@@ -664,7 +677,12 @@
             "[$release_group] $title$title_alias [$episode_expr$release_version][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
             "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
             "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]",
-            "[$release_group] $title [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en].$file_extension"
+            "[$release_group] $title [$episode_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en].$file_extension",
+
+            "[$release_group] $title$title_alias [$episode_expr$release_version][$resolution][&video_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_expr][$resolution][&video_term][&subtitle_language_en]",
+            "[$release_group] $title [$episode_expr][$resolution][&video_term][&subtitle_language_en].$file_extension"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
@@ -679,7 +697,11 @@
         [
             "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode]",
             "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_chs&subtitle_mode][$noise]",
-            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]"
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term-&bit_depth][&subtitle_language_en]",
+
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term][&subtitle_language_chs&subtitle_mode][$noise]",
+            "[$release_group] $title$title_alias [$episode_count_expr][$resolution][&video_term][&subtitle_language_en]"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
@@ -699,7 +721,16 @@
             "[$release_group] $title - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term][&subtitle_language_en].$file_extension",
             "[$release_group] $title - $episode_expr$release_version [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en].$file_extension",
             "[$release_group] $title$title_alias E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
-            "[$release_group] $title$title_alias - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
+            "[$release_group] $title$title_alias - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+
+            "[$release_group] $title$title_alias - $episode_expr [$source $resolution $video_term &audio_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title$title_alias [$episode_count_expr] [$source $resolution $video_term &audio_term][&subtitle_language_chs&subtitle_mode]",
+            "[$release_group] $title - $episode_expr [$source $resolution $video_term &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title - $episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title - $episode_expr$release_version [$source $resolution $video_term &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title - $episode_expr$release_version [$source $resolution $video_term &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title$title_alias E$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "[$release_group] $title$title_alias - E$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]"
         ],
         "title_alias_open":"",
         "title_alias_close":"",
@@ -818,7 +849,22 @@
             "$title_en E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
             "$title_en - E$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
             "$title_en $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
-            "$title_en - $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]"
+            "$title_en - $season_exprE$episode_expr [$source $resolution $video_term-&bit_depth &audio_term &subtitle_language_en]",
+
+            "[$release_group] $title_en - $episode_expr [$source $resolution $video_term &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title_en - $episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title_en - $episode_expr$release_version [$source $resolution $video_term &audio_term][&subtitle_language_en].$file_extension",
+            "[$release_group] $title_en - $episode_expr$release_version [$source $resolution $video_term &audio_term &subtitle_language_en].$file_extension",
+            "[$release_group] $title_en E$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "[$release_group] $title_en - E$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "[$release_group] $title_en $season_exprE$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "[$release_group] $title_en - $season_exprE$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "$title_en - $episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en].$file_extension",
+            "$title_en - $episode_expr$release_version [$source $resolution $video_term &audio_term][&subtitle_language_en].$file_extension",
+            "$title_en E$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "$title_en - E$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "$title_en $season_exprE$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]",
+            "$title_en - $season_exprE$episode_expr [$source $resolution $video_term &audio_term &subtitle_language_en]"
         ],
         "exclude_title_season_expr": true,
         "title_alias_open":"",

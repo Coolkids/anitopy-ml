@@ -7,7 +7,7 @@ __pycache__/
 .pytest_cache/
 
 # 本地数据、缓存和训练产物
-data/
+/data/
 artifacts/
 reports/
 

@@ -5,10 +5,11 @@ from __future__ import annotations
 import hashlib
 import json
 import random
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from itertools import batched, islice
 from pathlib import Path
 from time import perf_counter
-from typing import Any
+from typing import Any, Iterable, Iterator
 
 from anitopy_ml import __version__
 from anitopy_ml.errors import ConfigurationError, InputValidationError, SchemaValidationError
@@ -20,8 +21,8 @@ from anitopy_ml.modeling.runtime import require_training_dependencies
 from anitopy_ml.training.control import EarlyStopping, TrainingProgress
 from anitopy_ml.training.objectives import masked_multitask_loss
 from anitopy_ml.training.checkpoint import read_checkpoint_metadata, write_checkpoint_metadata
-from anitopy_ml.training.trainer import save_torch_training_state
-from anitopy_ml.training.augment import augment_train_records
+from anitopy_ml.training.trainer import load_torch_training_state, save_torch_training_state
+from anitopy_ml.training.streaming import iter_jsonl, scan_partition, training_records
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,19 +58,8 @@ def read_extractor_training_config(path: str | Path) -> ExtractorTrainingConfig:
     return config
 
 
-def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    """读取训练分区，并拒绝空分区。"""
-    try:
-        records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    except (OSError, json.JSONDecodeError) as error:
-        raise InputValidationError(f"无法读取训练分区：{path}。") from error
-    if not records:
-        raise InputValidationError(f"训练分区为空：{path}。")
-    return records
-
-
 def _prepare_records(
-    records: list[dict[str, Any]],
+    records: Iterable[dict[str, Any]],
     *,
     tokenizer: Any,
     label_to_id: dict[str, int],
@@ -84,7 +74,7 @@ def _prepare_records(
         labels = record.get("labels")
         if not text or not isinstance(characters, list) or "".join(map(str, characters)) != text:
             raise SchemaValidationError("训练记录的原文与字符序列不一致。")
-        if not isinstance(labels, list):
+        if not isinstance(labels, list) or len(labels) != len(text) or any(label not in label_to_id for label in labels):
             raise SchemaValidationError("训练记录缺少字符级BIO标签。")
         encoded = tokenizer(
             text,
@@ -94,6 +84,8 @@ def _prepare_records(
             add_special_tokens=True,
         )
         offsets = [tuple(map(int, offset)) for offset in encoded["offset_mapping"]]
+        if max((end for _, end in offsets), default=0) < len(text.rstrip()):
+            raise SchemaValidationError("训练标题超过分词最大长度，请增大--max-length，避免对截断字符提供错误监督。")
         owners = [0] * len(text)
         positions = [0] * len(text)
         for token_index, (start, end) in enumerate(offsets):
@@ -116,9 +108,10 @@ def _prepare_records(
     return prepared, issues
 
 
-def _batches(records: list[dict[str, Any]], batch_size: int) -> list[list[dict[str, Any]]]:
+def _batches(records: Iterable[dict[str, Any]], batch_size: int) -> Iterator[list[dict[str, Any]]]:
     """按稳定顺序分批，确保同一输入得到可复现的训练顺序。"""
-    return [records[index : index + batch_size] for index in range(0, len(records), batch_size)]
+    for group in batched(records, batch_size):
+        yield list(group)
 
 
 def load_initial_model_weights(
@@ -178,7 +171,7 @@ def _pad_character_batch(batch: list[dict[str, Any]], pad_token_id: int) -> dict
     return result
 
 
-def _evaluate(model: Any, records: list[dict[str, Any]], *, labels: tuple[str, ...], device: Any, pad_token_id: int) -> dict[str, float | int]:
+def _evaluate(model: Any, records: Iterable[dict[str, Any]], *, labels: tuple[str, ...], device: Any, pad_token_id: int, batch_size: int = 32) -> dict[str, float | int]:
     """计算对齐后词元序列的严格实体指标。"""
     torch, _ = require_training_dependencies()
     predicted_entities = 0
@@ -186,7 +179,7 @@ def _evaluate(model: Any, records: list[dict[str, Any]], *, labels: tuple[str, .
     correct_entities = 0
     model.eval()
     with torch.no_grad():
-        for batch in _batches(records, 32):
+        for batch in _batches(records, batch_size):
             padded = _pad_character_batch(batch, pad_token_id)
             inputs = torch.tensor(padded["input_ids"], device=device)
             attention = torch.tensor(padded["attention_mask"], device=device)
@@ -226,10 +219,24 @@ def train_extractor(
     augment_whitespace: bool = False,
     initial_model_dir: str | Path | None = None,
     seed: int = 20260918,
+    resume: bool = False,
+    max_steps: int | None = None,
+    checkpoint_steps: int = 1000,
+    shuffle_buffer_size: int = 1024,
+    gradient_checkpointing: bool = False,
 ) -> dict[str, object]:
     """训练离线 XLM-R 抽取模型并返回中文实验报告。"""
     if epochs <= 0 or batch_size <= 0 or max_length < 8:
         raise InputValidationError("训练轮数、批大小必须大于0，最大长度不得小于8。")
+    if checkpoint_steps <= 0 or shuffle_buffer_size <= 0 or (max_steps is not None and max_steps <= 0):
+        raise InputValidationError("检查点间隔、洗牌缓冲区和本次最大优化器步数必须大于0。")
+    if resume and initial_model_dir is not None:
+        raise InputValidationError("--resume与--init-model不能同时使用。")
+    output = Path(output_dir)
+    if not resume and output.exists() and any(output.iterdir()):
+        raise InputValidationError("新的训练输出目录必须为空；继续同一训练请使用--resume。")
+    if resume and not (output / "training_state.pt").is_file():
+        raise InputValidationError("恢复目录缺少training_state.pt。")
     torch, transformers = require_training_dependencies()
     if seed < 0:
         raise InputValidationError("随机种子不能为负数。")
@@ -263,11 +270,12 @@ def train_extractor(
         raise ConfigurationError("本地缺少XLM-R分词器文件；请先下载并缓存模型后再离线训练。") from error
     if not getattr(tokenizer, "is_fast", False):
         raise ConfigurationError("XLM-R训练必须使用支持偏移映射的快速分词器。")
-    output = Path(output_dir)
     try:
         model = create_extractor_model(model_config, local_files_only=True).to(device)
     except OSError as error:
         raise ConfigurationError("本地缺少XLM-R模型权重；请先下载并缓存模型后再离线训练。") from error
+    if gradient_checkpointing:
+        model.encoder.gradient_checkpointing_enable()
     weight_initialization = (
         load_initial_model_weights(
             model,
@@ -278,14 +286,39 @@ def train_extractor(
         if initial_model_dir is not None
         else None
     )
-    raw_train = _read_jsonl(directory / "train.jsonl")
-    augmented_train = augment_train_records(raw_train) if augment_whitespace else []
-    train, train_issues = _prepare_records(
-        [*raw_train, *augmented_train], tokenizer=tokenizer, label_to_id=model_config.label_to_id(), max_length=max_length
-    )
-    validation, validation_issues = _prepare_records(
-        _read_jsonl(directory / "validation.jsonl"), tokenizer=tokenizer, label_to_id=model_config.label_to_id(), max_length=max_length
-    )
+    train_stats = scan_partition(directory / "train.jsonl", augment_whitespace=augment_whitespace)
+    validation_stats = scan_partition(directory / "validation.jsonl")
+    for name, stats in (("train", train_stats), ("validation", validation_stats)):
+        declared = manifest.get("分区", {}).get(name, {})
+        if declared.get("SHA256", stats["SHA256"]) != stats["SHA256"] or declared.get("样本数", stats["样本数"]) != stats["样本数"]:
+            raise InputValidationError(f"{name}分区实际内容与训练清单不一致。")
+    manifest_hash = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    settings = {
+        "version": 1,
+        "manifest_sha256": manifest_hash,
+        "train": train_stats,
+        "validation": validation_stats,
+        "model_config": asdict(model_config),
+        "config": asdict(config),
+        "epochs": epochs,
+        "batch_size": batch_size,
+        "max_length": max_length,
+        "seed": seed,
+        "augment_whitespace": augment_whitespace,
+        "shuffle_buffer_size": shuffle_buffer_size,
+        "gradient_checkpointing": gradient_checkpointing,
+        "device_type": device.type,
+        "torch_version": torch.__version__,
+        "transformers_version": transformers.__version__,
+    }
+    train_count = train_stats["样本数"] + train_stats["增强样本数"]
+    total_batches = (train_count + batch_size - 1) // batch_size
+
+    def prepare_stream(records: Iterable[dict[str, Any]]) -> Iterator[dict[str, Any]]:
+        for group in _batches(records, batch_size):
+            prepared, _ = _prepare_records(group, tokenizer=tokenizer, label_to_id=model_config.label_to_id(), max_length=max_length)
+            yield from prepared
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
     stopper = EarlyStopping(config.early_stopping_patience)
@@ -293,68 +326,116 @@ def train_extractor(
     history: list[dict[str, object]] = []
     best_f1 = -1.0
     global_step = 0
+    batch_cursor = 0
+    total_loss = 0.0
+    elapsed = 0.0
+    if resume:
+        restored = load_torch_training_state(output, model=model, optimizer=optimizer, scaler=scaler, expected_settings=settings)
+        history = restored["history"]
+        global_step = restored["global_step"]
+        batch_cursor = restored["batch_cursor"]
+        total_loss = restored["total_loss"]
+        best_f1 = restored["best_f1"]
+        stopper = EarlyStopping(**restored["stopper"])
+        weight_initialization = restored["weight_initialization"]
+        elapsed = restored["elapsed"]
+        # 原子状态文件是恢复进度的依据；旁路元数据可能在断电时尚未更新。
+        if len(history) > epochs or not 0 <= batch_cursor < total_batches:
+            raise SchemaValidationError("检查点中的轮次或批次进度无效。")
+        if batch_cursor and batch_cursor % config.gradient_accumulation_steps:
+            raise SchemaValidationError("检查点不在完整梯度累积边界，无法安全恢复。")
     started_at = perf_counter()
-    for epoch in range(1, epochs + 1):
-        model.train()
-        optimizer.zero_grad(set_to_none=True)
-        total_loss = 0.0
-        batch_groups = _batches(train, batch_size)
-        for batch_index, batch in enumerate(batch_groups, start=1):
-            padded = _pad_character_batch(batch, int(tokenizer.pad_token_id))
-            inputs = torch.tensor(padded["input_ids"], device=device)
-            attention = torch.tensor(padded["attention_mask"], device=device)
-            target = torch.tensor(padded["labels"], device=device)
-            loss_mask = torch.tensor(padded["loss_mask"], device=device)
-            token_indices = torch.tensor(padded["character_token_indices"], device=device)
-            character_ids = torch.tensor(padded["character_ids"], device=device)
-            character_positions = torch.tensor(padded["character_positions"], device=device)
-            with torch.autocast(device_type=device.type, enabled=device.type == "cuda"):
-                output_values = model(inputs, attention, token_indices, character_ids, character_positions)
-                loss = masked_multitask_loss(output_values["character_logits"], target, loss_mask)["loss"]
-                scaled_loss = loss / config.gradient_accumulation_steps
-            scaler.scale(scaled_loss).backward()
-            total_loss += float(loss.detach().item())
-            if batch_index % config.gradient_accumulation_steps == 0 or batch_index == len(batch_groups):
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip_norm)
-                scaler.step(optimizer)
-                scaler.update()
-                optimizer.zero_grad(set_to_none=True)
-                global_step += 1
-        metrics = _evaluate(model, validation, labels=labels, device=device, pad_token_id=int(tokenizer.pad_token_id))
-        validation_f1 = float(metrics["F1"])
-        history.append({"轮次": epoch, "训练损失": total_loss / len(batch_groups), "验证指标": metrics})
-        if validation_f1 > best_f1:
-            best_f1 = validation_f1
-            torch.save(model.state_dict(), output / "best_model.pt")
-            tokenizer.save_pretrained(output / "tokenizer")
-        should_stop = stopper.update(validation_f1)
-        save_torch_training_state(output, model=model, optimizer=optimizer)
+    run_steps = 0
+
+    def save_checkpoint() -> None:
+        # 只在优化器更新后保存；恢复时无需保存未提交的梯度。
+        extra = {
+            "settings": settings, "history": history, "global_step": global_step,
+            "batch_cursor": batch_cursor, "total_loss": total_loss, "best_f1": best_f1,
+            "stopper": asdict(stopper), "weight_initialization": weight_initialization,
+            "elapsed": elapsed + perf_counter() - started_at,
+        }
+        save_torch_training_state(output, model=model, optimizer=optimizer, scaler=scaler, extra_state=extra)
         write_checkpoint_metadata(
             output,
             progress=TrainingProgress(
-                epoch=epoch,
-                global_step=global_step,
-                best_validation_f1=best_f1,
-                early_stopping={"patience": config.early_stopping_patience, "bad_epochs": stopper.bad_epochs},
-                training_manifest_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                epoch=len(history), global_step=global_step,
+                best_validation_f1=best_f1 if best_f1 >= 0 else None,
+                early_stopping=asdict(stopper), training_manifest_sha256=manifest_hash,
             ),
             model_config={"模型名称": model_config.model_name, "模型版本": model_config.model_revision, "标签": list(labels)},
             weight_initialization=weight_initialization,
         )
-        if should_stop:
+
+    while len(history) < epochs and stopper.bad_epochs < stopper.patience:
+        epoch = len(history) + 1
+        model.train()
+        optimizer.zero_grad(set_to_none=True)
+        raw = training_records(
+            directory / "train.jsonl", augment_whitespace=augment_whitespace,
+            buffer_size=shuffle_buffer_size, seed=seed + epoch,
+        )
+        # 跳过已提交的原始记录，避免恢复时重复分词和反向传播。
+        remaining = prepare_stream(islice(raw, batch_cursor * batch_size, None))
+        for accumulation_group in batched(_batches(remaining, batch_size), config.gradient_accumulation_steps):
+            for batch in accumulation_group:
+                padded = _pad_character_batch(batch, int(tokenizer.pad_token_id))
+                tensors = {name: torch.tensor(value, device=device) for name, value in padded.items()}
+                with torch.autocast(device_type=device.type, enabled=device.type == "cuda"):
+                    output_values = model(*(tensors[name] for name in ("input_ids", "attention_mask", "character_token_indices", "character_ids", "character_positions")))
+                    loss = masked_multitask_loss(output_values["character_logits"], tensors["labels"], tensors["loss_mask"])["loss"]
+                    scaled_loss = loss / len(accumulation_group)
+                scaler.scale(scaled_loss).backward()
+                total_loss += float(loss.detach().item())
+                batch_cursor += 1
+            scaler.unscale_(optimizer)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip_norm)
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.zero_grad(set_to_none=True)
+            global_step += 1
+            run_steps += 1
+            epoch_finished = batch_cursor == total_batches
+            if epoch_finished:
+                metrics = _evaluate(model, prepare_stream(iter_jsonl(directory / "validation.jsonl")), labels=labels, device=device, pad_token_id=int(tokenizer.pad_token_id), batch_size=batch_size)
+                validation_f1 = float(metrics["F1"])
+                history.append({"轮次": epoch, "训练损失": total_loss / total_batches, "验证指标": metrics})
+                if validation_f1 > best_f1:
+                    best_f1 = validation_f1
+                    temporary_weights = output / "best_model.pt.tmp"
+                    torch.save(model.state_dict(), temporary_weights)
+                    temporary_weights.replace(output / "best_model.pt")
+                    tokenizer.save_pretrained(output / "tokenizer")
+                stopper.update(validation_f1)
+                batch_cursor = 0
+                total_loss = 0.0
+            stage_finished = max_steps is not None and run_steps >= max_steps
+            if epoch_finished or stage_finished or global_step % checkpoint_steps == 0:
+                save_checkpoint()
+            if global_step % 100 == 0 or stage_finished or epoch_finished:
+                print(f"训练进度：已完成{len(history)}轮，全局优化器步数{global_step}，当前轮批次{batch_cursor}/{total_batches}。", flush=True)
+            if stage_finished:
+                break
+        if max_steps is not None and run_steps >= max_steps:
             break
+    finished = len(history) >= epochs or stopper.bad_epochs >= stopper.patience
     report = {
         "说明": "这是模板分布内的XLM-R实体级评测，不能代表真实发布标题准确率。",
         "设备": str(device),
-        "训练样本数": len(train),
-        "原始训练样本数": len(raw_train),
-        "空白增强样本数": len(augmented_train),
-        "验证样本数": len(validation),
+        "状态": "训练完成" if finished else "分段暂停",
+        "全局优化器步数": global_step,
+        "本次优化器步数": run_steps,
+        "当前轮已完成批次": batch_cursor,
+        "每轮批次数": total_batches,
+        "当前轮训练损失": total_loss / batch_cursor if batch_cursor else None,
+        "训练样本数": train_count,
+        "原始训练样本数": train_stats["样本数"],
+        "空白增强样本数": train_stats["增强样本数"],
+        "验证样本数": validation_stats["样本数"],
         "训练轮次": len(history),
-        "最佳验证实体F1": best_f1,
-        "耗时秒": round(perf_counter() - started_at, 2),
-        "训练数据清单SHA256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        "最佳验证实体F1": best_f1 if best_f1 >= 0 else None,
+        "耗时秒": round(elapsed + perf_counter() - started_at, 2),
+        "训练数据清单SHA256": manifest_hash,
         "权重初始化": weight_initialization,
         "随机种子": seed,
         "训练配置": {
@@ -364,10 +445,14 @@ def train_extractor(
             "早停耐心值": config.early_stopping_patience,
             "最大长度": max_length,
             "批大小": batch_size,
+            "洗牌缓冲区大小": shuffle_buffer_size,
+            "梯度检查点": gradient_checkpointing,
         },
         "环境": {"项目版本": __version__, "Torch版本": torch.__version__, "Transformers版本": transformers.__version__},
-        "对齐问题": {"训练": train_issues, "验证": validation_issues},
+        "对齐问题": {"训练": [], "验证": []},
         "训练历史": history,
     }
-    (output / "训练报告.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary_report = output / "训练报告.json.tmp"
+    temporary_report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary_report.replace(output / "训练报告.json")
     return report

@@ -2,6 +2,6 @@
 
 from anitopy_ml.schemas import ParseResult
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 __all__ = ["ParseResult", "__version__"]

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Anitopy-ML 本地解析接口
-  version: 0.1.0
+  version: 0.3.0
   description: 本地运行的媒体标题解析接口。所有请求和响应均使用 UTF-8 JSON。
 servers:
   - url: http://127.0.0.1:8000

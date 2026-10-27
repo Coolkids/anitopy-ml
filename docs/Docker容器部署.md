@@ -21,7 +21,7 @@ docker build -t anitopy-ml:v11 .
 GitHub Actions 发布镜像后，也可直接拉取：
 
 ```powershell
-docker pull ghcr.io/coolkids/anitopy-ml:v0.1.0
+docker pull ghcr.io/coolkids/anitopy-ml:v0.3.0
 ```
 
 构建过程不会下载任何模型文件。镜像内默认值如下，运行时都可以用环境变量覆盖：
@@ -55,7 +55,7 @@ docker run --rm --name anitopy-ml-api `
   -v anitopy-ml-huggingface:/opt/anitopy-ml/huggingface `
   -e ANITOPY_DEVICE=cpu `
   -e ANITOPY_ALLOWED_HOSTS=localhost,127.0.0.1 `
-  ghcr.io/coolkids/anitopy-ml:v0.1.0
+  ghcr.io/coolkids/anitopy-ml:v0.3.0
 ```
 
 首次启动会在日志中显示下载与缓存准备过程。使用本地构建镜像时，把末尾名称替换为 `anitopy-ml:v11`。
@@ -89,7 +89,7 @@ Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/v1/parse -ContentType 
 ```yaml
 services:
   anitopy-ml:
-    image: ghcr.io/coolkids/anitopy-ml:v0.1.0
+    image: ghcr.io/coolkids/anitopy-ml:v0.3.0
     container_name: anitopy-ml-api
     restart: unless-stopped
     ports:
@@ -173,7 +173,7 @@ docker build -t anitopy-ml:local .
 
 ### 为训练结果生成模型版本
 
-软件包与镜像版本、模型发布版本、基础编码器版本分别管理。例如，软件可以是 `0.2.0`，模型是 `v13.0.0`，XLM-R 基础编码器修订仍是 `main`。不要修改 `checkpoint_metadata.json` 中的 `模型配置.模型版本` 来设置发布版本，该字段属于基础编码器。
+软件包与镜像版本、模型发布版本、基础编码器版本分别管理。例如，软件可以是 `0.3.0`，模型是 `v13.0.0`，XLM-R 基础编码器修订仍是 `main`。不要修改 `checkpoint_metadata.json` 中的 `模型配置.模型版本` 来设置发布版本，该字段属于基础编码器。
 
 为已完成的 V13 训练结果生成带版本号的模型 ZIP：
 

@@ -1,0 +1,12 @@
+include README.md pyproject.toml uv.lock Dockerfile .dockerignore data.json
+recursive-include configs *.json *.toml
+recursive-include docker *.py
+recursive-include docs *.md *.yaml
+recursive-include tools *.py
+global-exclude *.py[cod]
+prune artifacts
+prune data
+prune reports
+prune tests
+prune .git
+prune .venv

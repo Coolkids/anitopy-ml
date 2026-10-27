@@ -31,11 +31,13 @@ docker pull ghcr.io/coolkids/anitopy-ml:v0.1.0
 | `ANITOPY_MODEL_DIR` | `/opt/anitopy-ml/models/anitopy-ml-v11` | 持久化卷内的模型目录 |
 | `ANITOPY_MODEL_URL` | V11 GitHub Release 地址 | 待下载模型 ZIP 的地址 |
 | `ANITOPY_MODEL_UPDATE` | `missing` | 模型下载或更新策略 |
+| `ANITOPY_MODEL_VERSION` | 未设置 | 目标模型发布版本；设置后要求模型包声明完全相同的版本 |
+| `ANITOPY_MODEL_SHA256` | 未设置 | 可选的下载 ZIP 整包 SHA256 |
 | `ANITOPY_BASE_MODEL` | `FacebookAI/xlm-roberta-base` | 与模型权重匹配的基础编码器 |
 | `ANITOPY_PROCESSING_CONFIG` | 未设置 | 可选的只读 TOML 名称预处理配置路径，默认关闭 |
 | `HF_HOME` | `/opt/anitopy-ml/huggingface` | Hugging Face 持久化缓存目录 |
 
-模型 ZIP 解压后必须在根目录包含 `best_model.pt`、`checkpoint_metadata.json` 和 `tokenizer/`。下载会先写入临时目录，确认文件完整后才替换当前模型目录。
+模型 ZIP 解压后必须在根目录包含 `best_model.pt`、`checkpoint_metadata.json` 和 `tokenizer/`。新发布包另含 `model_release.json`，记录独立的模型版本号及逐文件 SHA256。下载会先写入临时目录，检查目标版本、文件完整性和哈希后再切换模型目录。
 
 ## 使用 docker run
 
@@ -153,28 +155,121 @@ docker compose up -d --force-recreate
 
 ## 更新模型
 
-默认 `missing` 策略只在模型目录缺失或不完整时下载，适合稳定运行。更新时，指定新模型 ZIP 地址并设置更新策略，然后重新创建容器。原有持久化卷会被新模型原子替换。
+更新功能在容器启动阶段执行；模型在服务进程内缓存，更新后需要重建或重启服务容器。先用当前源码构建包含新功能的镜像：
+
+```powershell
+docker build -t anitopy-ml:local .
+```
+
+默认 `missing` 策略只在模型目录缺失或不完整时下载。推荐使用 `version_changed`，让目标版本决定是否更新；同一地址发布新版本时也能触发下载。版本相同时复用持久化模型。
 
 | `ANITOPY_MODEL_UPDATE` | 行为 |
 | --- | --- |
 | `missing` | 默认值；仅在模型缺失或不完整时下载。 |
 | `always` | 每次容器启动都重新下载并替换模型。 |
 | `url_changed` | 仅在 `ANITOPY_MODEL_URL` 与上次成功下载地址不同，或模型缺失时更新。 |
+| `version_changed` | 模型缺失、未声明版本或实际版本与 `ANITOPY_MODEL_VERSION` 不同就更新；必须设置目标版本。 |
 | `never` | 禁止下载；要求挂载卷中已有完整模型。 |
 
-例如升级到用户自己发布的 V12 模型：
+### 为训练结果生成模型版本
+
+软件包与镜像版本、模型发布版本、基础编码器版本分别管理。例如，软件可以是 `0.2.0`，模型是 `v13.0.0`，XLM-R 基础编码器修订仍是 `main`。不要修改 `checkpoint_metadata.json` 中的 `模型配置.模型版本` 来设置发布版本，该字段属于基础编码器。
+
+为已完成的 V13 训练结果生成带版本号的模型 ZIP：
+
+```powershell
+uv run anitopy-ml model package `
+  --model artifacts/runs/V13_large_seed1 `
+  --version v13.0.0 `
+  --output dist/anitopy-ml-v13.0.0.zip
+```
+
+命令流式读取权重，保留训练目录原样。ZIP 包含推理权重、检查点元数据、完整分词器、已存在的校准及接受策略文件，以及自动生成的 `model_release.json`；不会包含优化器或训练状态。命令输出 ZIP 的 SHA256，可复制到 `ANITOPY_MODEL_SHA256`。同一版本应对应固定内容；权重或推理附件变更后分配新的模型版本号。
+
+将 ZIP 上传到自己的可访问发布地址，再把下载 URL 配置到容器。下面的 `example.com` 是占位地址，需要替换；本命令不会替你上传或发布模型。
+
+```json
+{
+  "schema_version": 1,
+  "model_version": "v13.0.0",
+  "files": {
+    "best_model.pt": "实际的64位SHA256",
+    "checkpoint_metadata.json": "实际的64位SHA256",
+    "tokenizer/tokenizer.json": "实际的64位SHA256",
+    "tokenizer/tokenizer_config.json": "实际的64位SHA256"
+  }
+}
+```
+
+以上是发布清单结构示意，由打包命令自动生成，不能直接把示意哈希作为实际发布文件使用。旧 ZIP 没有此文件时，仍支持原来的下载策略与目录名称标识；如果设置了 `ANITOPY_MODEL_VERSION`，则必须使用带发布清单的模型包，目标版本不能仅靠环境变量给旧包改名。
+
+### 按版本自动更新
+
+停止并移除旧容器后，使用相同持久化卷启动新容器：
 
 ```powershell
 docker run --rm --name anitopy-ml-api `
   -p 127.0.0.1:8000:8000 `
   -v anitopy-ml-models:/opt/anitopy-ml/models `
   -v anitopy-ml-huggingface:/opt/anitopy-ml/huggingface `
-  -e ANITOPY_MODEL_URL="https://example.com/releases/anitopy-ml-v12.zip" `
-  -e ANITOPY_MODEL_UPDATE=url_changed `
-  anitopy-ml:v11
+  -e ANITOPY_MODEL_URL="https://example.com/releases/anitopy-ml-v13.0.0.zip" `
+  -e ANITOPY_MODEL_VERSION=v13.0.0 `
+  -e ANITOPY_MODEL_UPDATE=version_changed `
+  anitopy-ml:local
 ```
 
-Compose 部署时，在 `environment` 中加入同名变量，执行 `docker compose up -d --force-recreate` 即可。新模型应使用与原模型兼容的 `ANITOPY_BASE_MODEL`；若更换了基础编码器，也应一并设置该变量，入口程序会在缓存中补齐它。
+需要固定 ZIP 内容时，再增加 `-e ANITOPY_MODEL_SHA256="打包命令输出的64位SHA256"`。目标版本或哈希不符、包不完整、下载失败时会拒绝切换并退出，原模型文件保持不变。若目录切换失败会尝试恢复旧目录；下次启动也会恢复异常退出留下的旧目录备份。同一卷的更新操作使用进程锁串行化。
+
+Compose 部署时，将服务改为当前镜像，并加入以下环境变量：
+
+```yaml
+    image: anitopy-ml:local
+    environment:
+      ANITOPY_MODEL_URL: https://example.com/releases/anitopy-ml-v13.0.0.zip
+      ANITOPY_MODEL_VERSION: v13.0.0
+      ANITOPY_MODEL_UPDATE: version_changed
+      # 可选：填入打包命令实际输出的 ZIP SHA256。
+      # ANITOPY_MODEL_SHA256: ...
+```
+
+执行 `docker compose up -d --force-recreate anitopy-ml` 后，启动程序会安装目标版本，再启动 API。回退时将目标版本、URL 和可选哈希一起改为旧发布版本后重新创建容器；版本判断使用完全相等比较。
+
+### 手动更新与版本查询
+
+想先完成下载校验、再启动服务时，可以手动执行 `model-update`。该命令强制下载当前 URL，即使版本与上次相同也会重新安装；`never` 策略仍禁止下载。它只准备模型包，不加载基础编码器或启动 API。
+
+先修改 Compose 中的目标版本、URL 和哈希，再执行：
+
+```powershell
+docker compose stop anitopy-ml
+docker compose run --rm --no-deps anitopy-ml model-update
+if ($LASTEXITCODE -ne 0) { throw "模型更新失败；原模型已保留，请修复配置或改回旧版本后再启动。" }
+docker compose up -d --force-recreate anitopy-ml
+```
+
+更新共享模型卷前先停止使用该目录的服务容器，避免工作进程继续使用旧的内存权重。模型安装后仍应通过健康检查确认实际模型可加载。
+
+查询持久化卷里的模型版本，不下载或加载模型：
+
+```powershell
+docker compose run --rm --no-deps anitopy-ml model-info
+```
+
+本地目录也可查询：
+
+```powershell
+uv run anitopy-ml model info --model artifacts/releases/anitopy-ml-v13
+```
+
+服务运行后查询实际已加载版本：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/healthz
+```
+
+新模型包的响应中 `model_version` 为 `v13.0.0`，解析接口各条结果中的 `model_version` 使用相同来源。该值取自已加载模型的发布文件；改变目标环境变量不会把仍在运行的旧模型报告成新版本。`model-info` 查询磁盘状态，`/healthz` 查询当前进程，两者在尚未重启时可能不同。
+
+新模型应使用与原模型兼容的 `ANITOPY_BASE_MODEL`；若更换了基础编码器，也应一并设置该变量，入口程序会在缓存中补齐它。
 
 若管理员已经把模型文件和基础编码器缓存预先写入卷，可设置 `ANITOPY_MODEL_UPDATE=never`，让启动过程完全离线。
 

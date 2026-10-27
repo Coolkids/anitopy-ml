@@ -114,6 +114,8 @@ components:
           type: string
         model_version:
           type: string
+          description: 当前进程实际加载的模型发布版本；旧模型缺少发布信息时返回目录标识。
+          example: v13.0.0
         device:
           type: string
           enum: [auto, cpu, cuda]
@@ -184,6 +186,8 @@ components:
           type: string
         model_version:
           type: string
+          description: 模型包声明的发布版本，独立于软件包版本与基础编码器修订。
+          example: v13.0.0
         normalizer_version:
           type: string
         status:

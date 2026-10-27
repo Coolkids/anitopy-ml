@@ -58,6 +58,15 @@ def build_parser() -> argparse.ArgumentParser:
     doctor = subparsers.add_parser("doctor", help="检查运行环境和可选组件。")
     doctor.add_argument("--json", action="store_true", help="以JSON格式输出检查结果。")
 
+    model = subparsers.add_parser("model", help="打包和查询模型发布版本。")
+    model_commands = model.add_subparsers(dest="model_command", title="模型命令")
+    model_package = model_commands.add_parser("package", help="为推理模型生成带版本号和逐文件哈希的ZIP包。")
+    model_package.add_argument("--model", required=True, help="训练完成的模型目录。")
+    model_package.add_argument("--version", required=True, help="独立的模型发布版本号，例如v13.0.0。")
+    model_package.add_argument("--output", required=True, help="新的模型ZIP输出路径。")
+    model_info = model_commands.add_parser("info", help="查询模型发布版本，不加载权重。")
+    model_info.add_argument("--model", required=True, help="模型目录。")
+
     data = subparsers.add_parser("data", help="导入并统计标题数据。")
     data_commands = data.add_subparsers(dest="data_command", title="数据命令")
     ingest = data_commands.add_parser("ingest", help="将CSV导入为可追溯的JSONL。")
@@ -310,6 +319,16 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(report, ensure_ascii=False, indent=2))
             else:
                 print_doctor_report(report)
+            return 0
+        if arguments.command == "model" and arguments.model_command in {"package", "info"}:
+            from anitopy_ml.model_release import model_information, package_model
+
+            report = (
+                package_model(arguments.model, version=arguments.version, output=arguments.output)
+                if arguments.model_command == "package"
+                else model_information(arguments.model)
+            )
+            print(json.dumps(report, ensure_ascii=False, indent=2))
             return 0
         if arguments.command == "data" and arguments.data_command == "ingest":
             records = ingest_csv(arguments.input, column=arguments.column)

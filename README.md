@@ -157,6 +157,8 @@ docker run --rm -p 8000:8000 `
 
 接口约定、环境变量、Docker Compose、模型持久化与更新示例见 [接口服务说明](docs/接口服务.md)、[Docker 容器部署](docs/Docker容器部署.md) 和 [OpenAPI 文件](docs/接口定义.openapi.yaml)。GitHub Actions 会在发布 Release 时构建并推送 `ghcr.io/coolkids/anitopy-ml` 镜像。
 
+模型发布可使用 `anitopy-ml model package --model 模型目录 --version v13.0.0 --output dist/anitopy-ml-v13.0.0.zip` 生成带版本号和文件哈希的 ZIP。Docker 设置 `ANITOPY_MODEL_UPDATE=version_changed` 与目标 `ANITOPY_MODEL_VERSION` 后，在容器启动时按版本更新；同时提供 `model-update` 手动更新和 `model-info` 版本查询命令。健康检查与解析结果返回实际加载的模型版本。
+
 ## 输出说明
 
 - `extracted`：规范化后的结构化字段。

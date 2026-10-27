@@ -16,6 +16,7 @@ from anitopy_ml.inference.calibration import (
 from anitopy_ml.inference.decoding import build_parse_result
 from anitopy_ml.modeling.decoder import constrained_bio_decode
 from anitopy_ml.modeling.runtime import require_training_dependencies
+from anitopy_ml.model_release import model_version
 from anitopy_ml.processing import (
     NoOpResultProcessor,
     PreprocessingPipeline,
@@ -176,7 +177,7 @@ class MediaParser:
             tokenizer=tokenizer,
             labels=labels,
             device=selected_device,
-            model_version=f"XLM-R抽取模型：{directory.name}",
+            model_version=model_version(directory),
             character_boundary=character_boundary,
             calibrator=calibrator,
             acceptance_policy=acceptance_policy,
